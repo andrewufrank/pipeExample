@@ -15,6 +15,8 @@ library
        base -any
         , HTF
         , directory
+        , unix
+        , filepath
     exposed-modules:
         Lib.NoPipe
 

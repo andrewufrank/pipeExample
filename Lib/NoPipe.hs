@@ -18,7 +18,22 @@ module Lib.NoPipe where
 
 import           Test.Framework
 
-import System.Directory
+import qualified System.Directory as D
+import qualified System.Posix as P
+import   System.FilePath.Posix  ((</>))
+
+processOneDirEntry :: FilePath -> IO [String]
+processOneDirEntry fp = do
+    stat <- P.getFileStatus fp
+
+    let res2 =   unwords ["\n?: ", fp]
+
+    return [res2]
+
+
+
+
+
 
 processFile :: FilePath -> IO String
 -- ^ process one file - print filename as a stub
@@ -34,16 +49,30 @@ processDir :: FilePath -> IO [String]
 processDir dir = do
     putStrLn . unwords $ ["processDirectory - ", dir]
     let res1 = unwords ["\nD: ", dir]
-    content <- getDirectoryContents dir
+    content <- D.getDirectoryContents dir
+    -- exclude special files:
     let content2 = filter ( \file' -> (file' /= "." && file' /= "..")  ) content
-    let res2 = map (\fs -> unwords ["\n?: ", fs]) content2
-    return (res1 : res2)
+    -- complete the names to absolute filepath
+    let content3 = map (dir </>) content
+    res3 <- mapM processOneDirEntry content3
+    return (res1 : concat res3)
 
 
 
 test_1 = do
     res <- processDir "/home/frank/testFileIO"
-    assertEqual res_2a res
+    assertEqual res_3a res
+
+res_3a =
+    ["\nD:  /home/frank/testFileIO",
+     "\n?:  /home/frank/testFileIO/.",
+     "\n?:  /home/frank/testFileIO/a1.txt",
+     "\n?:  /home/frank/testFileIO/sub.d",
+     "\n?:  /home/frank/testFileIO/..",
+     "\n?:  /home/frank/testFileIO/.a4.hidden",
+     "\n?:  /home/frank/testFileIO/a2",
+     "\n?:  /home/frank/testFileIO/subnew",
+     "\n?:  /home/frank/testFileIO/a3"]
 
 res_2a =
     ["\nD:  /home/frank/testFileIO", "\n?:  a1.txt", "\n?:  sub.d",
