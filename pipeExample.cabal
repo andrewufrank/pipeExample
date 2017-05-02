@@ -5,7 +5,7 @@ build-type: Simple
 license: AllRightsReserved
 license-file: LICENSE
 synopsis: example for pipe use
-description: collect md5 for all files on disk 
+description: collect md5 for all files on disk
 
 
 author: Andrew U. Frank
@@ -14,6 +14,7 @@ library
     build-depends:
        base -any
         , HTF
+        , directory
     exposed-modules:
         Lib.NoPipe
 
