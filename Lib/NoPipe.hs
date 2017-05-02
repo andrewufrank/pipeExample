@@ -35,16 +35,21 @@ processDir dir = do
     putStrLn . unwords $ ["processDirectory - ", dir]
     let res1 = unwords ["\nD: ", dir]
     content <- getDirectoryContents dir
-    let res2 = map (\fs -> unwords ["\n?: ", fs]) content
+    let content2 = filter ( \file' -> (file' /= "." && file' /= "..")  ) content
+    let res2 = map (\fs -> unwords ["\n?: ", fs]) content2
     return (res1 : res2)
 
 
 
 test_1 = do
     res <- processDir "/home/frank/testFileIO"
-    assertEqual res_1a res
+    assertEqual res_2a res
 
-res_1a =
+res_2a =
+    ["\nD:  /home/frank/testFileIO", "\n?:  a1.txt", "\n?:  sub.d",
+     "\n?:  .a4.hidden", "\n?:  a2", "\n?:  subnew", "\n?:  a3"]
+
+res_1a =   -- remove special dir entry . and ..
     ["\nD:  /home/frank/testFileIO"
     , "\n?:  ."
     , "\n?:  a1.txt"
