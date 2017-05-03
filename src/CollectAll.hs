@@ -9,7 +9,7 @@ import Lib.NoPipe
 
 main =  do  -- with tests in other modules
     putStrLn "Collect all files:\n"
-    processDir "testFileIO"
+    processDir "/home/frank"
 
     putStrLn ("----------------------------------------------------- end")
     return ()

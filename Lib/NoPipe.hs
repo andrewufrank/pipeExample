@@ -2,6 +2,9 @@
 --
 -- Module      :  collect all files on disk
 -- and compute for each the MD5
+-- produces error: openFile: resource exhausted (Too many open files)
+-- needs pipe for stream processing
+
 
 -----------------------------------------------------------------------------
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
