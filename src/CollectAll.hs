@@ -6,10 +6,12 @@
 module Main     where      -- must have Main (main) or Main where
 
 import Lib.NoPipe
+import Lib.WithPipe
 
 main =  do  -- with tests in other modules
     putStrLn "Collect all files:\n"
-    processDir "/home/frank"
+--    processDir "/home/frank"
+    startPipe "/home/frank/Workspace8/testDirFileIO"
 
     putStrLn ("----------------------------------------------------- end")
     return ()

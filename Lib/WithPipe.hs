@@ -21,72 +21,152 @@ module Lib.WithPipe where
 
 import           Test.Framework
 
+import Pipes
+import System.IO as S
+import Control.Monad (unless)
+
 import qualified Pipes as Pipe
 import qualified Pipes.Prelude as Pipe
+import qualified Pipes.Prelude as P
 import Pipes ((>->), (~>), Pipe (..))
 
 import qualified System.Directory as D
-import qualified System.Posix as P
+import qualified System.Posix as Posix
 import   System.FilePath.Posix  ((</>))
 --import Safe
 --import qualified Data.ByteString.Lazy  as L
 import Lib.NoPipe (getMD5, res_6a)
-import Data.Traversable
+--import Data.Traversable
 
 startPipe :: FilePath ->  IO String
 -- ^ collect the filenames and md5
 startPipe fp = do
-    res <- Pipe.runEffect $
-        initialProducer fp
-        ~>  processDir
-        ~> processOneDirEntry
-        >-> Pipe.print
---        >-> toListM
+    res <- Pipe.runEffect $  effect8
+----                Pipe.yield fp
+----                fp
+--        ~> processOneDirEntry
+----        ~> Pipe.print
+--                ~> Pipe.toListM
+
     return "test" -- res
 
-initialProducer :: FilePath -> Pipe.Producer String IO ()
+effect1 :: Effect IO ()
+effect1 = for stdinLn $ \str ->
+                lift $ putStrLn str
+
+effect2 :: Effect IO ()
+effect2 = for (initialProducer "/home/frank/Workspace8/testDirFileIO") $ \dir ->
+                lift $ putStrLn dir
+
+effect3 :: Effect IO ()
+effect3 = for stdinLn $ \str ->
+                finalConsumer str
+
+effect4 :: Effect IO ()
+effect4 = for stdinLn $ \str ->
+                putStrConsumer str
+
+effect5 :: Effect IO ()
+effect5 =  for stdinLn
+                finalConsumer
+
+------effect6 :: Effect IO ()
+--effect6 =   P.stdinLn  >-> Pipe.toListM  - possibly problem with toListM
+
+effect7 :: Effect IO ()
+effect7 =  (initialProducer "/home/frank/Workspace8/testDirFileIO")
+                >-> P.stdoutLn
+
+effect8 :: Effect IO ()
+effect8 =  (initialProducer "/home/frank/Workspace8/testDirFileIO")
+                >-> processOneDirEntry0
+                >-> P.stdoutLn
+
+
+tut1 :: Effect IO ()
+tut1 =  P.stdinLn >-> P.stdoutLn
+--stdinLn :: Producer String IO ()
+stdinLn = do
+    eof <- lift S.isEOF        -- 'lift' an 'IO' action from the base monad
+    unless eof $ do
+        str <- lift getLine
+        yield str            -- 'yield' the 'String'
+        stdinLn              -- Loop
+
+--initialProducer :: FilePath -> Pipe.Producer String IO ()
 initialProducer fp = do
     Pipe.yield fp
     return ()
 
+--finalConsumer :: String -> Consumer String IO ()
+finalConsumer st = do
+    Pipe.lift $ putStrLn st
+--    return (a:: _)
+
+--putStrConsumer :: String -> Consumer String IO ()
+putStrConsumer st =  lift $ putStrLn st
+
 --processOneDirEntry :: FilePath -> IO [String]
-processOneDirEntry ::  Pipe FilePath String IO ()
-processOneDirEntry  = do
-    fp <- Pipe.await
-    stat <- Pipe.lift $ P.getFileStatus fp
-    let isRegular = P.isRegularFile stat
+processOneDirEntry :: FilePath -> Pipe FilePath String IO ()
+--processOneDirEntry ::  Pipe FilePath String IO ()
+processOneDirEntry fp = do
+--    fp <- Pipe.await
+    stat <- Pipe.lift $ Posix.getFileStatus fp
+    let isRegular = Posix.isRegularFile stat
     if isRegular
         then do
-            res <- Pipe.lift $ processFile fp
+            res <- Pipe.lift $ processFile1 fp
             Pipe.yield res
         else do
-            (do
-                Pipe.yield fp)
-                processDir )
+--            content ::[FilePath]  <- Pipe.lift $ processDir1 fp
+--            Pipe.each content -- processOneDirEntry
+        --             processDir fp
+            Pipe.yield ("dir " ++ fp)
+--    processOneDirEntry
+    return ()
+
+--processOneDirEntry :: FilePath -> IO [String]
+--processOneDirEntry :: FilePath -> Pipe FilePath String IO ()
+processOneDirEntry0 ::  Pipe FilePath String IO ()
+processOneDirEntry0   = do
+    fp <- Pipe.await
+    stat <- Pipe.lift $ Posix.getFileStatus fp
+    let isRegular = Posix.isRegularFile stat
+    if isRegular
+        then do
+            res <- Pipe.lift $ processFile1 fp
+            Pipe.yield res
+        else do
+--            content ::[FilePath]  <- Pipe.lift $ processDir1 fp
+--            Pipe.each content -- processOneDirEntry
+        --             processDir fp
+            Pipe.yield ("dir " ++ fp)
+--    processOneDirEntry
     return ()
 
 
-processFile :: FilePath -> IO String
+
+----processDir :: FilePath -> IO [String]
+---- ^ process one directory
+--processDir ::  FilePath ->    Pipe.Pipe String FilePath IO ()
+--processDir dir = do
+----    putStrLn . unwords $ ["processDirectory - ", dir]
+----    dir <- Pipe.await
+--    content ::[FilePath]  <- Pipe.lift $ processDir1 dir
+--
+--    Pipe.each content -- processOneDirEntry
+--
+--    return () -- yRes
+
+----------------------------------------------support code (not pipes)
+processFile1 :: FilePath -> IO String
 -- ^ process one file - print filename as a stub
-processFile fn = do
+processFile1 fn = do
 --    putStrLn . unwords $ ["processFile - ", fn]
 --    s <- readFile fn
     md <-  getMD5 fn
     let res = unwords ["\nF:", fn, show md]
     return res
-
-
---processDir :: FilePath -> IO [String]
--- ^ process one directory
-processDir ::     Pipe.Pipe String FilePath IO ()
-processDir  = do
---    putStrLn . unwords $ ["processDirectory - ", dir]
-    dir <- Pipe.await
-    content ::[FilePath]  <- Pipe.lift $ processDir1 dir
-
-    Pipe.each content -- processOneDirEntry
-
-    return () -- yRes
 
 --processDir1 :: FilePath -> IO [FilePath ]
 -- ^ process one directory
@@ -101,9 +181,10 @@ processDir1 dir = do
     return content3
 
 
---test_1 = do
+test_1 = do
 --    res <- processDir "/home/frank/Workspace8/testDirFileIO"
---    assertEqual res_6a res
+    startPipe "/home/frank/Workspace8/testDirFileIO"
+    assertBool False
 
 
 
