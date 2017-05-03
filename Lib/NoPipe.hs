@@ -21,6 +21,9 @@ import           Test.Framework
 import qualified System.Directory as D
 import qualified System.Posix as P
 import   System.FilePath.Posix  ((</>))
+import           Data.Digest.Pure.MD5  (md5)
+import Safe
+import qualified Data.ByteString.Lazy  as L
 
 processOneDirEntry :: FilePath -> IO [String]
 processOneDirEntry fp = do
@@ -40,9 +43,21 @@ processFile :: FilePath -> IO [String]
 processFile fn = do
     putStrLn . unwords $ ["processFile - ", fn]
     s <- readFile fn
-    let md = 0
+    md <- getMD5 fn
     let res = unwords ["\nF:", fn, show md]
     return [res]
+
+getMD5 :: FilePath -> IO (Maybe String)
+-- ^ compute the MD5 value and return digest
+getMD5 fn = do
+        status <- P.getSymbolicLinkStatus fn
+        let regular = P.isRegularFile status
+        readable <- P.fileAccess fn True False False
+        if regular && readable then do
+                filedata <- L.readFile fn
+                let res = show . md5 $ filedata
+                return (Just res)
+            else return Nothing
 
 processDir :: FilePath -> IO [String]
 -- ^ process one directory
@@ -61,9 +76,26 @@ processDir dir = do
 
 
 test_1 = do
-    res <- processDir "/home/frank/testFileIO"
-    assertEqual res_4a res
+    res <- processDir "/home/frank/Workspace8/testDirFileIO"
+    assertEqual res_6a res
 
+res_6a =
+    ["\nD:  /home/frank/Workspace8/testDirFileIO",
+     "\nF: /home/frank/Workspace8/testDirFileIO/a1.txt Just \"562fade7e712814aec485852d3f5f6dc\"",
+     "\nD:  /home/frank/Workspace8/testDirFileIO/sub.d",
+     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/a1.txt Just \"562fade7e712814aec485852d3f5f6dc\"",
+     "\nD:  /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d",
+     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d/a1.txt Just \"562fade7e712814aec485852d3f5f6dc\"",
+     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
+     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d/a2 Just \"a19e4fec5422bdf818f3b4ec8903d644\"",
+     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d/a3 Just \"9d607a663f3e9b0a90c3c8d4426640dc\"",
+     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
+     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/a2 Just \"a19e4fec5422bdf818f3b4ec8903d644\"",
+     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/a3 Just \"9d607a663f3e9b0a90c3c8d4426640dc\"",
+     "\nF: /home/frank/Workspace8/testDirFileIO/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
+     "\nF: /home/frank/Workspace8/testDirFileIO/a2 Just \"a19e4fec5422bdf818f3b4ec8903d644\"",
+     "\nD:  /home/frank/Workspace8/testDirFileIO/subnew",
+     "\nF: /home/frank/Workspace8/testDirFileIO/a3 Just \"9d607a663f3e9b0a90c3c8d4426640dc\""]
 res_4a =
     ["\nD:  /home/frank/testFileIO",
      "\nF: /home/frank/testFileIO/a1.txt 0",

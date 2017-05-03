@@ -17,6 +17,9 @@ library
         , directory
         , unix
         , filepath
+        , pureMD5
+        , safe
+        , bytestring
     exposed-modules:
         Lib.NoPipe
 
