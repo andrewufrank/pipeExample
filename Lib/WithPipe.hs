@@ -13,6 +13,7 @@
     , TypeSynonymInstances
     , FlexibleInstances
     , TypeFamilies
+    , ScopedTypeVariables
     #-}
 
 
@@ -20,41 +21,76 @@ module Lib.WithPipe where
 
 import           Test.Framework
 
+import qualified Pipes as Pipe
+import qualified Pipes.Prelude as Pipe
+import Pipes ((>->), (~>), Pipe (..))
+
 import qualified System.Directory as D
 import qualified System.Posix as P
 import   System.FilePath.Posix  ((</>))
-import           Data.Digest.Pure.MD5  (md5)
-import Safe
-import qualified Data.ByteString.Lazy  as L
+--import Safe
+--import qualified Data.ByteString.Lazy  as L
 import Lib.NoPipe (getMD5, res_6a)
+import Data.Traversable
 
-processOneDirEntry :: FilePath -> IO [String]
-processOneDirEntry fp = do
-    stat <- P.getFileStatus fp
-    res1 <- if P.isRegularFile stat
+startPipe :: FilePath ->  IO String
+-- ^ collect the filenames and md5
+startPipe fp = do
+    res <- Pipe.runEffect $
+        initialProducer fp
+        ~>  processDir
+        ~> processOneDirEntry
+        >-> Pipe.print
+--        >-> toListM
+    return "test" -- res
+
+initialProducer :: FilePath -> Pipe.Producer String IO ()
+initialProducer fp = do
+    Pipe.yield fp
+    return ()
+
+--processOneDirEntry :: FilePath -> IO [String]
+processOneDirEntry ::  Pipe FilePath String IO ()
+processOneDirEntry  = do
+    fp <- Pipe.await
+    stat <- Pipe.lift $ P.getFileStatus fp
+    let isRegular = P.isRegularFile stat
+    if isRegular
         then do
-            processFile fp
+            res <- Pipe.lift $ processFile fp
+            Pipe.yield res
         else do
-            processDir fp
---    let res2 =   unwords ["\n?: ", fp]
+            (do
+                Pipe.yield fp)
+                processDir )
+    return ()
 
-    return res1
 
-
-processFile :: FilePath -> IO [String]
+processFile :: FilePath -> IO String
 -- ^ process one file - print filename as a stub
 processFile fn = do
-    putStrLn . unwords $ ["processFile - ", fn]
-    s <- readFile fn
-    md <- getMD5 fn
+--    putStrLn . unwords $ ["processFile - ", fn]
+--    s <- readFile fn
+    md <-  getMD5 fn
     let res = unwords ["\nF:", fn, show md]
-    return [res]
+    return res
 
 
-processDir :: FilePath -> IO [String]
+--processDir :: FilePath -> IO [String]
 -- ^ process one directory
-processDir dir = do
-    putStrLn . unwords $ ["processDirectory - ", dir]
+processDir ::     Pipe.Pipe String FilePath IO ()
+processDir  = do
+--    putStrLn . unwords $ ["processDirectory - ", dir]
+    dir <- Pipe.await
+    content ::[FilePath]  <- Pipe.lift $ processDir1 dir
+
+    Pipe.each content -- processOneDirEntry
+
+    return () -- yRes
+
+--processDir1 :: FilePath -> IO [FilePath ]
+-- ^ process one directory
+processDir1 dir = do
     let res1 = unwords ["\nD: ", dir]
     content <- D.getDirectoryContents dir
     -- exclude special files:
@@ -62,14 +98,12 @@ processDir dir = do
     -- complete the names to absolute filepath
     let content3 = map (dir </>) content2
     -- process each entry
-    res3 <- mapM processOneDirEntry content3
-    return (res1 : concat res3)
+    return content3
 
 
-
-test_1 = do
-    res <- processDir "/home/frank/Workspace8/testDirFileIO"
-    assertEqual res_6a res
+--test_1 = do
+--    res <- processDir "/home/frank/Workspace8/testDirFileIO"
+--    assertEqual res_6a res
 
 
 
