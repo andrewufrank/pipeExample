@@ -41,7 +41,7 @@ import Lib.NoPipe (getMD5, res_6a)
 startPipe :: FilePath ->  IO String
 -- ^ collect the filenames and md5
 startPipe fp = do
-    res <- Pipe.runEffect $  effect8
+    res <- Pipe.runEffect $  effect9
     return "test" -- res
 
 
@@ -50,11 +50,22 @@ effect8 =  (initialProducer "/home/frank/Workspace8/testDirFileIO")
                 >-> processOneDirEntry0
                 >-> finalConsumer0
 
+effect9 :: Effect IO ()
+effect9 =  for (initialProducer "/home/frank/Workspace8/testDirFileIO") $ \dir ->
+                processOneDirEntry dir
+                >-> finalConsumer0
+
+--initialProducer :: FilePath -> Pipe.Producer String IO ()
+initialProducer fp = do
+    Pipe.yield fp
+--    return ()
+
 
 --finalConsumer :: String -> Consumer String IO ()
 finalConsumer0 = do
     st <- await
     Pipe.lift $ putStrLn st
+    finalConsumer0
 --    return (a:: _)
 
 --putStrConsumer :: String -> Consumer String IO ()
@@ -66,6 +77,7 @@ putStrConsumer st =  lift $ putStrLn st
 processOneDirEntry0 ::  Pipe FilePath String IO ()
 processOneDirEntry0   = do
     fp <- Pipe.await
+    Pipe.yield ("start " ++ fp)
     stat <- Pipe.lift $ Posix.getFileStatus fp
     let isRegular = Posix.isRegularFile stat
     if isRegular
@@ -73,13 +85,33 @@ processOneDirEntry0   = do
             res <- Pipe.lift $ processFile1 fp
             Pipe.yield res
         else do
---            content ::[FilePath]  <- Pipe.lift $ processDir1 fp
---            Pipe.each content -- processOneDirEntry
+            Pipe.yield ("startDir " ++ fp)
+            content ::[FilePath]  <- Pipe.lift $ processDir1 fp
+            lift $ putStrLn . show $ content
+            Pipe.each content -- processOneDirEntry
         --             processDir fp
-            Pipe.yield ("dir " ++ fp)
---    processOneDirEntry
+--            Pipe.yield ("dir " ++ fp)
+    processOneDirEntry0
     return ()
 
+--processOneDirEntry :: FilePath -> IO [String]
+--processOneDirEntry :: FilePath -> Pipe FilePath String IO ()
+--processOneDirEntry ::  Pipe FilePath String IO ()
+processOneDirEntry fp = do
+--    fp <- Pipe.await
+    stat <- Pipe.lift $ Posix.getFileStatus fp
+    let isRegular = Posix.isRegularFile stat
+    if isRegular
+        then do
+            res <- Pipe.lift $ processFile1 fp
+            Pipe.yield res
+        else do
+            Pipe.yield ("startDir " ++ fp)
+            content ::[FilePath]  <- Pipe.lift $ processDir1 fp
+            lift $ putStrLn . show $ content
+            mapM_ processOneDirEntry content
+--    processOneDirEntry
+    return ()
 
 
 ----processDir :: FilePath -> IO [String]
@@ -164,10 +196,6 @@ stdinLn = do
         yield str            -- 'yield' the 'String'
         stdinLn              -- Loop
 
---initialProducer :: FilePath -> Pipe.Producer String IO ()
-initialProducer fp = do
-    Pipe.yield fp
-    return ()
 
 
 
@@ -176,21 +204,3 @@ finalConsumer st = do
     Pipe.lift $ putStrLn st
 --    return (a:: _)
 
---processOneDirEntry :: FilePath -> IO [String]
-processOneDirEntry :: FilePath -> Pipe FilePath String IO ()
---processOneDirEntry ::  Pipe FilePath String IO ()
-processOneDirEntry fp = do
---    fp <- Pipe.await
-    stat <- Pipe.lift $ Posix.getFileStatus fp
-    let isRegular = Posix.isRegularFile stat
-    if isRegular
-        then do
-            res <- Pipe.lift $ processFile1 fp
-            Pipe.yield res
-        else do
---            content ::[FilePath]  <- Pipe.lift $ processDir1 fp
---            Pipe.each content -- processOneDirEntry
-        --             processDir fp
-            Pipe.yield ("dir " ++ fp)
---    processOneDirEntry
-    return ()
