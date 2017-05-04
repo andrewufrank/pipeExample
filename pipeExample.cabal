@@ -38,7 +38,7 @@ library
 
 
 
-executable collect
+executable pipeExample
     main-is:    CollectAll.hs
     build-depends: base
         , pipeExample

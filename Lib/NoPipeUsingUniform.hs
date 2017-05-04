@@ -28,6 +28,8 @@ import Uniform.FileIO
 import Uniform.FileStatus
 import Uniform.Strings hiding ((</>))
 
+import Control.Monad
+
 recurseDirUU :: FilePath -> IO (ErrOrVal [String])
 recurseDirUU fp = runErr $ recurseDir fp
 
@@ -68,10 +70,26 @@ directoryContent dir = do
 processOneFile :: FilePath -> ErrIO String
 -- ^ process one file - print filename as a stub
 processOneFile fn = do
---    putStrLn . unwords $ ["processOneFile - ", fn]
+    isReadable <- getFileAccess fn (True, False, False)
+    if isReadable
+        then do
+                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
+                md <- getMD5z fn
+                let res = unwords ["\nF:", fn, show md]
+                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
+                return res
+            `catchError` \e -> do
+                putIOwords ["processOneFile error ", showT fn, "readable", showT isReadable
+                    , "\n", showT e]
+                return ""
+        else return ""
+
+getMD5z fn = do
+    putIOwords ["a"]
     md <- getMD5 fn
-    let res = unwords ["\nF:", fn, show md]
-    return res
+    putIOwords ["b"]
+    return md
+
 
 -- TODO fileio
 --getFileStatus' :: FilePath  -> ErrIO P.FileStatus
