@@ -12,7 +12,8 @@ main =  do  -- with tests in other modules
     putStrLn "Collect all files:\n"
 --    processDir "/home/frank"
 --    startPipe "/home/frank/Workspace8/testDirFileIO"
-    startPipe "/home/frank/Workspace8"
+--    startPipe "/home/frank/Workspace8"
+    startPipe "/home/frank/Workspace8/pipeExample/testDirFileIO"
 
     putStrLn ("----------------------------------------------------- end")
     return ()

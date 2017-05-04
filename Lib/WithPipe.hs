@@ -28,7 +28,7 @@ import Pipes ((>->), (~>))
 import qualified System.Directory as D
 import qualified System.Posix as Posix
 import   System.FilePath.Posix  ((</>))
-import Lib.NoPipe (getMD5)
+import Lib.NoPipe (getMD5, testDir, resTestDir6)
 
 startPipe :: FilePath ->  IO String
 -- ^ collect the filenames and md5
@@ -92,7 +92,7 @@ processDir1 dir = do
 
 test_1 = do
     putStrLn "----------------------------"
-    startPipe "/home/frank/Workspace8/testDirFileIO"
+    startPipe testDir
     putStrLn "============================"
     assertBool False  -- to force output
 

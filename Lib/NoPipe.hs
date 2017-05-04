@@ -76,29 +76,29 @@ processDir dir = do
     res3 <- mapM processOneDirEntry content3
     return (res1 : concat res3)
 
-
+testDir = "testDirFileIO"  -- relative path for test, gives relative path in output
 
 test_1 = do
-    res <- processDir "/home/frank/Workspace8/testDirFileIO"
-    assertEqual res_6a res
+    res <- processDir testDir
+    assertEqual resTestDir6 res
 
-res_6a =
-    ["\nD:  /home/frank/Workspace8/testDirFileIO",
-     "\nF: /home/frank/Workspace8/testDirFileIO/a1.txt Just \"562fade7e712814aec485852d3f5f6dc\"",
-     "\nD:  /home/frank/Workspace8/testDirFileIO/sub.d",
-     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/a1.txt Just \"562fade7e712814aec485852d3f5f6dc\"",
-     "\nD:  /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d",
-     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d/a1.txt Just \"562fade7e712814aec485852d3f5f6dc\"",
-     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
-     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d/a2 Just \"a19e4fec5422bdf818f3b4ec8903d644\"",
-     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.hiddensub.d/a3 Just \"9d607a663f3e9b0a90c3c8d4426640dc\"",
-     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
-     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/a2 Just \"a19e4fec5422bdf818f3b4ec8903d644\"",
-     "\nF: /home/frank/Workspace8/testDirFileIO/sub.d/a3 Just \"9d607a663f3e9b0a90c3c8d4426640dc\"",
-     "\nF: /home/frank/Workspace8/testDirFileIO/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
-     "\nF: /home/frank/Workspace8/testDirFileIO/a2 Just \"a19e4fec5422bdf818f3b4ec8903d644\"",
-     "\nD:  /home/frank/Workspace8/testDirFileIO/subnew",
-     "\nF: /home/frank/Workspace8/testDirFileIO/a3 Just \"9d607a663f3e9b0a90c3c8d4426640dc\""]
+resTestDir6 =
+    ["\nD:  testDirFileIO",
+     "\nF: testDirFileIO/a1.txt Just \"562fade7e712814aec485852d3f5f6dc\"",
+     "\nD:  testDirFileIO/sub.d",
+     "\nF: testDirFileIO/sub.d/a1.txt Just \"562fade7e712814aec485852d3f5f6dc\"",
+     "\nD:  testDirFileIO/sub.d/.hiddensub.d",
+     "\nF: testDirFileIO/sub.d/.hiddensub.d/a1.txt Just \"562fade7e712814aec485852d3f5f6dc\"",
+     "\nF: testDirFileIO/sub.d/.hiddensub.d/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
+     "\nF: testDirFileIO/sub.d/.hiddensub.d/a2 Just \"a19e4fec5422bdf818f3b4ec8903d644\"",
+     "\nF: testDirFileIO/sub.d/.hiddensub.d/a3 Just \"9d607a663f3e9b0a90c3c8d4426640dc\"",
+     "\nF: testDirFileIO/sub.d/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
+     "\nF: testDirFileIO/sub.d/a2 Just \"a19e4fec5422bdf818f3b4ec8903d644\"",
+     "\nF: testDirFileIO/sub.d/a3 Just \"9d607a663f3e9b0a90c3c8d4426640dc\"",
+     "\nF: testDirFileIO/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
+     "\nF: testDirFileIO/a2 Just \"a19e4fec5422bdf818f3b4ec8903d644\"",
+     "\nD:  testDirFileIO/subnew",
+     "\nF: testDirFileIO/a3 Just \"9d607a663f3e9b0a90c3c8d4426640dc\""]
 res_4a =
     ["\nD:  /home/frank/testFileIO",
      "\nF: /home/frank/testFileIO/a1.txt 0",

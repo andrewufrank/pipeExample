@@ -11,7 +11,7 @@ module Main     where      -- must have Main (main) or Main where
 --import System.Exit
 
 import           Test.Framework
---import {-@ HTF_TESTS @-} Lib.NoPipe
+import {-@ HTF_TESTS @-} Lib.NoPipe
 --import {-@ HTF_TESTS @-} Lib.MonadTransformer
 import {-@ HTF_TESTS @-} Lib.WithPipe
 
