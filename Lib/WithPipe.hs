@@ -21,22 +21,14 @@ module Lib.WithPipe where
 
 import           Test.Framework
 
-import Pipes
-import System.IO as S
-import Control.Monad (unless)
-
 import qualified Pipes as Pipe
-import qualified Pipes.Prelude as Pipe
-import qualified Pipes.Prelude as P
-import Pipes ((>->), (~>), Pipe (..))
+--import qualified Pipes.Prelude as Pipe
+import Pipes ((>->), (~>))
 
 import qualified System.Directory as D
 import qualified System.Posix as Posix
 import   System.FilePath.Posix  ((</>))
---import Safe
---import qualified Data.ByteString.Lazy  as L
-import Lib.NoPipe (getMD5, res_6a)
---import Data.Traversable
+import Lib.NoPipe (getMD5)
 
 startPipe :: FilePath ->  IO String
 -- ^ collect the filenames and md5
@@ -44,20 +36,18 @@ startPipe fp = do
     res <- Pipe.runEffect $  effect9 fp
     return "test" -- res
 
-effect9 :: FilePath -> Effect IO ()  -- useful to fix types
-effect9 fp =  for (initialProducer fp) $ \dir ->
+effect9 :: FilePath -> Pipe.Effect IO ()  -- useful to fix types
+effect9 fp =  Pipe.for (initialProducer fp) $ \dir ->
                 processOneDirEntry dir
                 >-> finalConsumer0
 
 --initialProducer :: FilePath -> Pipe.Producer String IO ()
 initialProducer fp = do
     Pipe.yield fp
---    return ()
-
 
 --finalConsumer :: String -> Consumer String IO ()
 finalConsumer0 = do
-    st <- await
+    st <- Pipe.await
     Pipe.lift $ putStrLn st
     finalConsumer0
 
