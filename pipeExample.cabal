@@ -23,12 +23,17 @@ library
         , containers
         , monads-tf
         , pipes ==4.3.3
+        --
+        , uniform-strings
+        , uniform-error
+        , uniform-fileio
 
     default-language: Haskell2010
     exposed-modules:
         Lib.NoPipe
         Lib.MonadTransformer
         Lib.WithPipe
+        Lib.NoPipeUsingUniform
 
 
 

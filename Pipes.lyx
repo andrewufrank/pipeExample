@@ -1217,5 +1217,25 @@ for
  situation.
 \end_layout
 
+\begin_layout Standard
+The code needs (independent of using pipes for streaming) more checks to
+ avoid non-regular files.
+ The complexity of interfacing with the file system and the number of libraries
+ imported (and the even larger numbe of packages that are to be considered
+ for the selection of the ones needed) is time consuming; the selection
+ by stack to select packages is a step in the right direction.
+ Under the heading 
+\begin_inset Quotes eld
+\end_inset
+
+uniform
+\begin_inset Quotes erd
+\end_inset
+
+ I start a comparable effort to build packages which collect interfaces
+ in an uniform format.
+  
+\end_layout
+
 \end_body
 \end_document

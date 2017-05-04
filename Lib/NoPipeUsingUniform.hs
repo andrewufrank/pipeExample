@@ -14,25 +14,29 @@
     , TypeSynonymInstances
     , FlexibleInstances
     , TypeFamilies
+    , ScopedTypeVariables
+    , OverloadedStrings
     #-}
 
 
-module Lib.NoPipe where
+module Lib.NoPipeUsingUniform where
 
 import           Test.Framework
 
-import qualified System.Directory as D
-import qualified System.Posix as P
-import   System.FilePath.Posix  ((</>))
-import           Data.Digest.Pure.MD5  (md5)
-import Safe
-import qualified Data.ByteString.Lazy  as L
+import Uniform.Error
+import Uniform.FileIO
+import Uniform.FileStatus
+import Uniform.Strings hiding ((</>))
 
-recurseDir :: FilePath -> IO [String]
+recurseDirUU :: FilePath -> IO (ErrOrVal [String])
+recurseDirUU fp = runErr $ recurseDir fp
+
+recurseDir :: FilePath -> ErrIO [String]
 -- main entry point
 recurseDir fp = do
-    stat <- P.getFileStatus fp
-    res1 <- if P.isRegularFile stat
+    putIOwords ["recurseDir", s2t fp]
+    stat <- getFileStatus' fp
+    res1 <- if isRegularFile stat
         then do
             r <- processOneFile fp
             return [r]
@@ -40,7 +44,7 @@ recurseDir fp = do
             processDir fp
     return res1
 
-processDir :: FilePath -> IO [String]
+processDir :: FilePath -> ErrIO [String]
 -- ^ process one directory
 processDir dir = do
     -- process the dir as an entry
@@ -49,23 +53,19 @@ processDir dir = do
     res3 <- mapM recurseDir content3
     return (res1 : concat res3)
 
-processOneDirEntry :: FilePath -> IO String
+processOneDirEntry :: FilePath -> ErrIO String
 processOneDirEntry dir = do
     let res1 = unwords ["\nD: ", dir]
     return res1
 
-directoryContent  :: FilePath -> IO [String]
+directoryContent  :: FilePath -> ErrIO [String]
 -- ^ find the entries in a directory - no recursion yet
 directoryContent dir = do
---    putStrLn . unwords $ ["directoryContent - ", dir]
-    content <- D.getDirectoryContents dir
-    -- exclude special files:
-    let content2 = filter ( \file' -> (file' /= "." && file' /= "..")  ) content
-    -- complete the names to absolute filepath
-    let content3 = map (dir </>) content2
-    return content3
+    content :: [FilePath]  <- getDirCont dir
+    putIOwords ["directoryContent - ", s2t dir, showT content]
+    return content
 
-processOneFile :: FilePath -> IO String
+processOneFile :: FilePath -> ErrIO String
 -- ^ process one file - print filename as a stub
 processOneFile fn = do
 --    putStrLn . unwords $ ["processOneFile - ", fn]
@@ -73,23 +73,17 @@ processOneFile fn = do
     let res = unwords ["\nF:", fn, show md]
     return res
 
-getMD5 :: FilePath -> IO (Maybe String)
--- ^ compute the MD5 value and return digest
-getMD5 fn = do
-        status <- P.getSymbolicLinkStatus fn
-        let regular = P.isRegularFile status
-        readable <- P.fileAccess fn True False False
-        if regular && readable then do
-                filedata <- L.readFile fn
-                let res = show . md5 $ filedata
-                return (Just res)
-            else return Nothing
+-- TODO fileio
+--getFileStatus' :: FilePath  -> ErrIO P.FileStatus
+--getFileStatus' fp = liftIO $ P.getFileStatus   fp
 
-testDir = "testDirFileIO"  -- relative path for test, gives relative path in output
 
-test_1 = do
-    res <- recurseDir testDir
-    assertEqual resTestDir6 res
+testDir = "testDirFileIO" :: FilePath  -- relative path for test, gives relative path in output
+testDirAbs = "/home/frank/Workspace8/pipeExample/testDirFileIO" ::FilePath
+-- TODO error
+test_2 = do
+    res <- runErr $ recurseDir testDir
+    assertEqual (Right resTestDir6) res
 
 resTestDir6 =
     ["\nD:  testDirFileIO",
