@@ -34,6 +34,7 @@ library
         Lib.MonadTransformer
         Lib.WithPipe
         Lib.NoPipeUsingUniform
+        Lib.PipeUsingUniform
 
 
 

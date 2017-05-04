@@ -1,0 +1,32 @@
+
+D:  testDirFileIO
+
+F: testDirFileIO/a1.txt Just "562fade7e712814aec485852d3f5f6dc"
+
+D:  testDirFileIO/sub.d
+
+F: testDirFileIO/sub.d/a1.txt Just "562fade7e712814aec485852d3f5f6dc"
+
+D:  testDirFileIO/sub.d/.hiddensub.d
+
+F: testDirFileIO/sub.d/.hiddensub.d/a1.txt Just "562fade7e712814aec485852d3f5f6dc"
+
+F: testDirFileIO/sub.d/.hiddensub.d/.a4.hidden Just "a6f26e70990ed9c122288bfea23e2060"
+
+F: testDirFileIO/sub.d/.hiddensub.d/a2 Just "a19e4fec5422bdf818f3b4ec8903d644"
+
+F: testDirFileIO/sub.d/.hiddensub.d/a3 Just "9d607a663f3e9b0a90c3c8d4426640dc"
+
+F: testDirFileIO/sub.d/.a4.hidden Just "a6f26e70990ed9c122288bfea23e2060"
+
+F: testDirFileIO/sub.d/a2 Just "a19e4fec5422bdf818f3b4ec8903d644"
+
+F: testDirFileIO/sub.d/a3 Just "9d607a663f3e9b0a90c3c8d4426640dc"
+
+F: testDirFileIO/.a4.hidden Just "a6f26e70990ed9c122288bfea23e2060"
+
+F: testDirFileIO/a2 Just "a19e4fec5422bdf818f3b4ec8903d644"
+
+D:  testDirFileIO/subnew
+
+F: testDirFileIO/a3 Just "9d607a663f3e9b0a90c3c8d4426640dc"

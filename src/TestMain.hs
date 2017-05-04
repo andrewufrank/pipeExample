@@ -15,6 +15,7 @@ import {-@ HTF_TESTS @-} Lib.NoPipe
 --import {-@ HTF_TESTS @-} Lib.MonadTransformer
 --import {-@ HTF_TESTS @-} Lib.WithPipe
 import {-@ HTF_TESTS @-} Lib.NoPipeUsingUniform
+import {-@ HTF_TESTS @-} Lib.PipeUsingUniform
 
 -- main =  do  -- the local tests only
 --     putStrLn "HTF ExampleTest.hs:\n"
