@@ -1,0 +1,1221 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\listings_params "basicstyle={\ttfamily \scriptsize}"
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Section
+Stream processing: Pipes (version 4.3.3) 
+\end_layout
+
+\begin_layout Standard
+The simple task to collect for all files on disk some information (e.g.
+ the MD5 sum) reveals quickly that a 
+\begin_inset Quotes eld
+\end_inset
+
+naive
+\begin_inset Quotes erd
+\end_inset
+
+ approach is not working: the lazy execution starts with opening all the
+ files before any substantial processing is done.
+ The OS is stoping us by limiting the number of open files a process is
+ allowed to.
+ It is necessary to limit lazyness and pipes (or alternatively conduits)
+ offer a prinzipled approach to this.
+ 
+\end_layout
+
+\begin_layout Standard
+The package Pipes (in version 4.3.3) is a brilliant play with the abilities
+ of the Haskell type system to produce an elegant solution to complex tasks
+ - on the surface solutions appear very simple; unfortunately, the path
+ to the elegant solution is not always simple.
+ This blog shows a non-trivial example and details some of the issues encountere
+d on the way to it.
+ It uses the now current version (May 2017), which is somewhat different
+ from previous versions.
+ Pipes is a moving and improving target.
+ 
+\end_layout
+
+\begin_layout Standard
+The approach starts with the 
+\begin_inset Quotes eld
+\end_inset
+
+naive
+\begin_inset Quotes erd
+\end_inset
+
+ solution; it is useful to construct it, eventhough we expect it not to
+ work but in the process the issues related to the task - except for stream
+ processing - are addressed and resolved.
+ The understanding of the task and its solution is extremely helpful when
+ transforming the 
+\begin_inset Quotes eld
+\end_inset
+
+naive
+\begin_inset Quotes erd
+\end_inset
+
+ solution to a working stream processing solution.
+ 
+\end_layout
+
+\begin_layout Standard
+It is generally recommended to include tests while writing code; for this
+ end, a small test directory is included and a test is run and compared
+ with the expected result.
+ The tests show during the development the results achieved so far and indicate
+ what needs to be done.
+ 
+\end_layout
+
+\begin_layout Subsection
+Listing all files on disk
+\end_layout
+
+\begin_layout Standard
+The non-trivial task is to list all files on disk, each with its MD5 value;
+ the result can be used to find duplicate files and reduce clutter on disk.
+ The task is non trivial as it obviously fails with a lazy evaluation scheme.
+ Further, it requires recursive processing of directories, which adds complexity
+ to the stream processing.
+ 
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset Quotes eld
+\end_inset
+
+naive
+\begin_inset Quotes erd
+\end_inset
+
+ design processes a filepath and determines if it is a regular file or a
+ directory and then processes these in turn, for files computing the MD5
+ value, for directories recursively calling the process for each entry in
+ the directory.
+ The functions to produce the output for a directory, the output for a file
+ (calling a function to compute the MD5 value) and a function to obtain
+ the relevant content of a directory are written first.
+ They are then combined 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+{-# OPTIONS_GHC -F -pgmF htfpp #-}
+\end_layout
+
+\begin_layout Plain Layout
+
+{-# LANGUAGE
+\end_layout
+
+\begin_layout Plain Layout
+
+    MultiParamTypeClasses
+\end_layout
+
+\begin_layout Plain Layout
+
+    , FlexibleContexts
+\end_layout
+
+\begin_layout Plain Layout
+
+    , TypeSynonymInstances
+\end_layout
+
+\begin_layout Plain Layout
+
+    , FlexibleInstances
+\end_layout
+
+\begin_layout Plain Layout
+
+    , TypeFamilies
+\end_layout
+
+\begin_layout Plain Layout
+
+    #-}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+module Lib.NoPipe where
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+import           Test.Framework
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+import qualified System.Directory as D
+\end_layout
+
+\begin_layout Plain Layout
+
+import qualified System.Posix as P
+\end_layout
+
+\begin_layout Plain Layout
+
+import   System.FilePath.Posix  ((</>))
+\end_layout
+
+\begin_layout Plain Layout
+
+import           Data.Digest.Pure.MD5  (md5)
+\end_layout
+
+\begin_layout Plain Layout
+
+import Safe
+\end_layout
+
+\begin_layout Plain Layout
+
+import qualified Data.ByteString.Lazy  as L
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+recurseDir :: FilePath -> IO [String]
+\end_layout
+
+\begin_layout Plain Layout
+
+-- main entry point 
+\end_layout
+
+\begin_layout Plain Layout
+
+recurseDir fp = do
+\end_layout
+
+\begin_layout Plain Layout
+
+    stat <- P.getFileStatus fp
+\end_layout
+
+\begin_layout Plain Layout
+
+    res1 <- if P.isRegularFile stat
+\end_layout
+
+\begin_layout Plain Layout
+
+        then do
+\end_layout
+
+\begin_layout Plain Layout
+
+            r <- processOneFile fp
+\end_layout
+
+\begin_layout Plain Layout
+
+            return [r]
+\end_layout
+
+\begin_layout Plain Layout
+
+        else do
+\end_layout
+
+\begin_layout Plain Layout
+
+            processDir fp
+\end_layout
+
+\begin_layout Plain Layout
+
+    return res1
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+processDir :: FilePath -> IO [String]
+\end_layout
+
+\begin_layout Plain Layout
+
+-- ^ process one directory
+\end_layout
+
+\begin_layout Plain Layout
+
+processDir dir = do
+\end_layout
+
+\begin_layout Plain Layout
+
+    -- process the dir as an entry
+\end_layout
+
+\begin_layout Plain Layout
+
+    res1 <- processOneDirEntry dir 
+\end_layout
+
+\begin_layout Plain Layout
+
+    content3 <- directoryContent dir 
+\end_layout
+
+\begin_layout Plain Layout
+
+    res3 <- mapM recurseDir content3
+\end_layout
+
+\begin_layout Plain Layout
+
+    return (res1 : concat res3)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+processOneDirEntry :: FilePath -> IO String 
+\end_layout
+
+\begin_layout Plain Layout
+
+processOneDirEntry dir = do 
+\end_layout
+
+\begin_layout Plain Layout
+
+    let res1 = unwords ["
+\backslash
+nD: ", dir]
+\end_layout
+
+\begin_layout Plain Layout
+
+    return res1 
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\end_layout
+
+\begin_layout Plain Layout
+
+directoryContent  :: FilePath -> IO [String]
+\end_layout
+
+\begin_layout Plain Layout
+
+-- ^ find the entries in a directory - no recursion yet
+\end_layout
+
+\begin_layout Plain Layout
+
+directoryContent dir = do 
+\end_layout
+
+\begin_layout Plain Layout
+
+--    putStrLn .
+ unwords $ ["directoryContent - ", dir]
+\end_layout
+
+\begin_layout Plain Layout
+
+    content <- D.getDirectoryContents dir
+\end_layout
+
+\begin_layout Plain Layout
+
+    -- exclude special files:
+\end_layout
+
+\begin_layout Plain Layout
+
+    let content2 = filter ( 
+\backslash
+file' -> (file' /= "." && file' /= "..")  ) content
+\end_layout
+
+\begin_layout Plain Layout
+
+    -- complete the names to absolute filepath
+\end_layout
+
+\begin_layout Plain Layout
+
+    let content3 = map (dir </>) content2
+\end_layout
+
+\begin_layout Plain Layout
+
+    return content3 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+processOneFile :: FilePath -> IO String
+\end_layout
+
+\begin_layout Plain Layout
+
+-- ^ process one file - print filename as a stub
+\end_layout
+
+\begin_layout Plain Layout
+
+processOneFile fn = do
+\end_layout
+
+\begin_layout Plain Layout
+
+--    putStrLn .
+ unwords $ ["processOneFile - ", fn]
+\end_layout
+
+\begin_layout Plain Layout
+
+    md <- getMD5 fn
+\end_layout
+
+\begin_layout Plain Layout
+
+    let res = unwords ["
+\backslash
+nF:", fn, show md]
+\end_layout
+
+\begin_layout Plain Layout
+
+    return res
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+getMD5 :: FilePath -> IO (Maybe String)
+\end_layout
+
+\begin_layout Plain Layout
+
+-- ^ compute the MD5 value and return digest
+\end_layout
+
+\begin_layout Plain Layout
+
+getMD5 fn = do
+\end_layout
+
+\begin_layout Plain Layout
+
+        status <- P.getSymbolicLinkStatus fn
+\end_layout
+
+\begin_layout Plain Layout
+
+        let regular = P.isRegularFile status
+\end_layout
+
+\begin_layout Plain Layout
+
+        readable <- P.fileAccess fn True False False
+\end_layout
+
+\begin_layout Plain Layout
+
+        if regular && readable then do
+\end_layout
+
+\begin_layout Plain Layout
+
+                filedata <- L.readFile fn
+\end_layout
+
+\begin_layout Plain Layout
+
+                let res = show .
+ md5 $ filedata
+\end_layout
+
+\begin_layout Plain Layout
+
+                return (Just res)
+\end_layout
+
+\begin_layout Plain Layout
+
+            else return Nothing
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+testDir = "testDirFileIO"  -- relative path for test, gives relative path
+ in output 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+test_1 = do
+\end_layout
+
+\begin_layout Plain Layout
+
+    res <- processDir testDir
+\end_layout
+
+\begin_layout Plain Layout
+
+    assertEqual resTestDir6 res
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+resTestDir6 =  
+\end_layout
+
+\begin_layout Plain Layout
+
+    ["
+\backslash
+nD:  testDirFileIO",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/a1.txt Just 
+\backslash
+"562fade7e712814aec485852d3f5f6dc
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nD:  testDirFileIO/sub.d",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/sub.d/a1.txt Just 
+\backslash
+"562fade7e712814aec485852d3f5f6dc
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nD:  testDirFileIO/sub.d/.hiddensub.d",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/sub.d/.hiddensub.d/a1.txt Just 
+\backslash
+"562fade7e712814aec485852d3f5f6dc
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/sub.d/.hiddensub.d/.a4.hidden Just 
+\backslash
+"a6f26e70990ed9c122288bfea23e2060
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/sub.d/.hiddensub.d/a2 Just 
+\backslash
+"a19e4fec5422bdf818f3b4ec8903d644
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/sub.d/.hiddensub.d/a3 Just 
+\backslash
+"9d607a663f3e9b0a90c3c8d4426640dc
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/sub.d/.a4.hidden Just 
+\backslash
+"a6f26e70990ed9c122288bfea23e2060
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/sub.d/a2 Just 
+\backslash
+"a19e4fec5422bdf818f3b4ec8903d644
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/sub.d/a3 Just 
+\backslash
+"9d607a663f3e9b0a90c3c8d4426640dc
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/.a4.hidden Just 
+\backslash
+"a6f26e70990ed9c122288bfea23e2060
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/a2 Just 
+\backslash
+"a19e4fec5422bdf818f3b4ec8903d644
+\backslash
+"",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nD:  testDirFileIO/subnew",
+\end_layout
+
+\begin_layout Plain Layout
+
+     "
+\backslash
+nF: testDirFileIO/a3 Just 
+\backslash
+"9d607a663f3e9b0a90c3c8d4426640dc
+\backslash
+""]
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The main entry point (recursexx) checks whether the given filepath points
+ to a directory or a simple file and processes each; for directory it recurses
+ on the content of the directory.
+ 
+\end_layout
+
+\begin_layout Standard
+The program works for small directories - as is the test case included but
+ fails on directories with many files.
+ The lazy execution opens files before others are closed - a strategy which
+ processes the stream and closes resources before new ones are opened is
+ necessary.
+ The pipes package should exactly do this.
+\end_layout
+
+\begin_layout Subsection
+Using pipes
+\end_layout
+
+\begin_layout Standard
+The functions to process the file and the directory entry including the
+ function to obtain the content of a directory can be used again, because
+ they are not relevant for the problem; the functions which control processing
+ must be replaced.
+ The pipe package provides a principled and encapsulated way of managing
+ resources.
+ The approach in the pipe package is principled because the basic functions
+ form categories (see Pipe.Tutorial file in the package).
+\end_layout
+
+\begin_layout Standard
+Pipe has a number of very elaborate and sophisticated types, which render
+ error messages less instructive than usual.
+ In some cases, I could not figure out how to write type definitions, but
+ the compiler somehow figured it out.
+ The type of the effect is fairly simple and thus I broke running the monad
+ and defining the pipe as an Effect separately and each of the steps again
+ as a separate effect.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+{-# OPTIONS_GHC -F -pgmF htfpp #-}
+\end_layout
+
+\begin_layout Plain Layout
+
+{-# LANGUAGE
+\end_layout
+
+\begin_layout Plain Layout
+
+    MultiParamTypeClasses
+\end_layout
+
+\begin_layout Plain Layout
+
+    , FlexibleContexts
+\end_layout
+
+\begin_layout Plain Layout
+
+    , TypeSynonymInstances
+\end_layout
+
+\begin_layout Plain Layout
+
+    , FlexibleInstances
+\end_layout
+
+\begin_layout Plain Layout
+
+    , TypeFamilies
+\end_layout
+
+\begin_layout Plain Layout
+
+    , ScopedTypeVariables
+\end_layout
+
+\begin_layout Plain Layout
+
+    #-}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+module Lib.WithPipe where
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+import           Test.Framework
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+import qualified Pipes as Pipe
+\end_layout
+
+\begin_layout Plain Layout
+
+--import  Pipes 
+\end_layout
+
+\begin_layout Plain Layout
+
+import qualified Pipes.Prelude as Pipe
+\end_layout
+
+\begin_layout Plain Layout
+
+--import  Pipes.Prelude  
+\end_layout
+
+\begin_layout Plain Layout
+
+import Pipes ((>->), (~>))
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+import qualified System.Directory as D
+\end_layout
+
+\begin_layout Plain Layout
+
+import qualified System.Posix as Posix
+\end_layout
+
+\begin_layout Plain Layout
+
+import   System.FilePath.Posix  ((</>))
+\end_layout
+
+\begin_layout Plain Layout
+
+import Lib.NoPipe (processOneDirEntry, directoryContent, processOneFile 
+\end_layout
+
+\begin_layout Plain Layout
+
+                        , testDir, resTestDir6)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+startPipe :: FilePath ->  IO ()
+\end_layout
+
+\begin_layout Plain Layout
+
+-- ^ collect the filenames and md5
+\end_layout
+
+\begin_layout Plain Layout
+
+startPipe fp = do
+\end_layout
+
+\begin_layout Plain Layout
+
+    Pipe.runEffect $  effect fp
+\end_layout
+
+\begin_layout Plain Layout
+
+    return  ()
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+effect :: FilePath -> Pipe.Effect IO ()  -- useful to fix types
+\end_layout
+
+\begin_layout Plain Layout
+
+effect fp =  Pipe.for (initialProducer fp) $ 
+\backslash
+dir ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                recurseDir dir
+\end_layout
+
+\begin_layout Plain Layout
+
+                >-> finalConsumer
+\end_layout
+
+\begin_layout Plain Layout
+
+--                >-> Pipe.toListM
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+initialProducer :: FilePath -> Pipe.Producer String IO ()
+\end_layout
+
+\begin_layout Plain Layout
+
+initialProducer fp = do
+\end_layout
+
+\begin_layout Plain Layout
+
+    Pipe.yield fp
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+finalConsumer ::  Pipe.Consumer String IO ()
+\end_layout
+
+\begin_layout Plain Layout
+
+finalConsumer = do
+\end_layout
+
+\begin_layout Plain Layout
+
+    st <- Pipe.await
+\end_layout
+
+\begin_layout Plain Layout
+
+    Pipe.lift $ putStrLn st
+\end_layout
+
+\begin_layout Plain Layout
+
+    finalConsumer
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+--recurseDir :: FilePath -> Pipe FilePath String IO ()
+\end_layout
+
+\begin_layout Plain Layout
+
+-- must not have a defined type
+\end_layout
+
+\begin_layout Plain Layout
+
+recurseDir fp = do
+\end_layout
+
+\begin_layout Plain Layout
+
+    stat <- Pipe.lift $ Posix.getFileStatus fp
+\end_layout
+
+\begin_layout Plain Layout
+
+    let isRegular = Posix.isRegularFile stat
+\end_layout
+
+\begin_layout Plain Layout
+
+    if isRegular
+\end_layout
+
+\begin_layout Plain Layout
+
+        then do
+\end_layout
+
+\begin_layout Plain Layout
+
+            res <- Pipe.lift $ processOneFile fp
+\end_layout
+
+\begin_layout Plain Layout
+
+            Pipe.yield res
+\end_layout
+
+\begin_layout Plain Layout
+
+        else do
+\end_layout
+
+\begin_layout Plain Layout
+
+--            let res1 = unwords ["
+\backslash
+nD: ", fp]
+\end_layout
+
+\begin_layout Plain Layout
+
+            res1 <- Pipe.lift $ processOneDirEntry fp
+\end_layout
+
+\begin_layout Plain Layout
+
+            Pipe.yield res1
+\end_layout
+
+\begin_layout Plain Layout
+
+            content ::[FilePath]  <- Pipe.lift $ directoryContent fp
+\end_layout
+
+\begin_layout Plain Layout
+
+--            lift $ putStrLn .
+ show $ content
+\end_layout
+
+\begin_layout Plain Layout
+
+            Prelude.mapM_ recurseDir content  --   recursion (with mapM from
+ Prelude, not Pipe!)
+\end_layout
+
+\begin_layout Plain Layout
+
+    return ()
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The simple functions are a initial producer which yields the start value
+ for the recursion and a simple consumer at the end, which writes the result
+ to standard output (I could not figure out how to convert the result to
+ a value, which would have been useful for testing, but not for real usage).
+ The core is in the recurseDir function which has the filepath as an argument,
+ necessary for the recursive call later.
+ Calls to the previously defined functions must be lifted and help to decide
+ whether we have a regular file or a directory.
+ The result of the processing of one file or one directory is now returned
+ with yield, i.e.
+ put into the stream.
+ The recursion is with a regular monadic map over the content of the directory.
+ More tests for access on the files etc.
+ would be required.
+\end_layout
+
+\begin_layout Standard
+The connection between the initial producer and the recurseDir function
+ is with 
+\begin_inset Quotes eld
+\end_inset
+
+for <producer> 
+\backslash
+dir -> recurseDir dir
+\begin_inset Quotes erd
+\end_inset
+
+ and not with the simpler 
+\begin_inset Quotes eld
+\end_inset
+
+~>
+\begin_inset Quotes erd
+\end_inset
+
+, because the recurseDir has necessary an argument.
+ 
+\end_layout
+
+\begin_layout Subsection
+Conclusion and open questions
+\end_layout
+
+\begin_layout Standard
+The construction of a naive solution has clarified the task and resulted
+ in a program which works only for small directories.
+ The conversion to a stream processing solution, which manages resources,
+ could use most of the code written, only the recursive function call structure
+ had to be translated to the pipe environment.
+ The flexibility of the pipe type system gives in the end very elegant and
+ short code, but the compiler error messages are even less instructive than
+ usual.
+ I found the choice between the piping together of functions without arguments
+ (taking their inputs from the stream with await) and functions with arguments,
+ connected with 
+\begin_inset Quotes eld
+\end_inset
+
+for
+\begin_inset Quotes erd
+\end_inset
+
+ confusing.
+ I found that the piping with function arguments must be used in this recursive
+ situation.
+\end_layout
+
+\end_body
+\end_document
