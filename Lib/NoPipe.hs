@@ -13,6 +13,7 @@
     , FlexibleContexts
     , TypeSynonymInstances
     , FlexibleInstances
+    , ScopedTypeVariables
     , TypeFamilies
     #-}
 
@@ -27,6 +28,7 @@ import   System.FilePath.Posix  ((</>))
 import           Data.Digest.Pure.MD5  (md5)
 import Safe
 import qualified Data.ByteString.Lazy  as L
+import Control.Exception (catch, SomeException)
 
 recurseDir :: FilePath -> IO [String]
 -- main entry point
@@ -58,12 +60,20 @@ directoryContent  :: FilePath -> IO [String]
 -- ^ find the entries in a directory - no recursion yet
 directoryContent dir = do
 --    putStrLn . unwords $ ["directoryContent - ", dir]
-    content <- D.getDirectoryContents dir
-    -- exclude special files:
-    let content2 = filter ( \file' -> (file' /= "." && file' /= "..")  ) content
-    -- complete the names to absolute filepath
-    let content3 = map (dir </>) content2
-    return content3
+        stat <-   P.getSymbolicLinkStatus  (dir :: FilePath)
+        isReadExecutable <-  P.fileAccess dir  True False True
+        if isReadExecutable
+            then do
+                content <- D.getDirectoryContents dir
+                -- exclude special files:
+                let content2 = filter ( \file' -> (file' /= "." && file' /= "..")  ) content
+                -- complete the names to absolute filepath
+                let content3 = map (dir </>) content2
+                return content3
+            else return []
+    `catch` \(e::SomeException) -> do
+                    putStrLn . unwords $ ["directoryContent exception for ", show e]
+                    return []
 
 processOneFile :: FilePath -> IO String
 -- ^ process one file - print filename as a stub
@@ -84,6 +94,9 @@ getMD5 fn = do
                 let res = show . md5 $ filedata
                 return (Just res)
             else return Nothing
+    `catch` \(e::SomeException) -> do
+                    putStrLn . unwords $ ["getMD5 exception for ", show e]
+                    return (Nothing)
 
 testDir = "testDirFileIO"  -- relative path for test, gives relative path in output
 

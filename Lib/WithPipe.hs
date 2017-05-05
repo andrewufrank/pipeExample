@@ -32,17 +32,29 @@ import qualified System.Posix as Posix
 import   System.FilePath.Posix  ((</>))
 import Lib.NoPipe (processOneDirEntry, directoryContent, processOneFile
                         , testDir, resTestDir6)
+import System.IO
 
-startPipe :: FilePath ->  IO ()
+
+startPipe :: FilePath -> FilePath ->  IO ()
+startPipe target store = do
+    putStrLn ("start pipe " ++ target)
+    res <- startPipe2 target store
+    return ()
+
+startPipe2 :: FilePath -> FilePath -> IO ()
 -- ^ collect the filenames and md5
-startPipe fp = do
-    Pipe.runEffect $  effect fp
+startPipe2 target store = do
+    storeHandle <- openFile store WriteMode
+    Pipe.runEffect $  effect target storeHandle
+    hClose storeHandle
     return  ()
 
-effect :: FilePath -> Pipe.Effect IO ()  -- useful to fix types
-effect fp =  Pipe.for (initialProducer fp) $ \dir ->
+
+effect :: FilePath -> Handle -> Pipe.Effect IO ()  -- useful to fix types
+effect fp storeHandle =  Pipe.for (initialProducer fp) $ \dir ->
                 recurseDir dir
-                >-> finalConsumer
+                >-> Pipe.toHandle storeHandle
+--                >-> finalConsumer
 --                >-> Pipe.toListM
 
 initialProducer :: FilePath -> Pipe.Producer String IO ()
@@ -59,20 +71,27 @@ finalConsumer = do
 --recurseDir :: FilePath -> Pipe FilePath String IO ()
 -- must not have a defined type
 recurseDir fp = do
-    stat <- Pipe.lift $ Posix.getFileStatus fp
-    let isRegular = Posix.isRegularFile stat
-    if isRegular
+    filex <- Pipe.lift $ D.doesFileExist fp
+    direx <- Pipe.lift $ D.doesDirectoryExist fp
+    if filex
+--    stat <- Pipe.lift $ Posix.getFileStatus fp
+--    let isRegular = Posix.isRegularFile stat
+--    if isRegular
         then do
+            Pipe.lift $ putStrLn ("isFile " ++ fp )
             res <- Pipe.lift $ processOneFile fp
             Pipe.yield res
-        else do  -- add more tests!
+        else if direx then  do  -- add more tests!
+            Pipe.lift $ putStrLn ("isDir " ++ fp)
 --            let res1 = unwords ["\nD: ", fp]
             res1 <- Pipe.lift $ processOneDirEntry fp
             Pipe.yield res1
             content ::[FilePath]  <- Pipe.lift $ directoryContent fp
 --            lift $ putStrLn . show $ content
             Prelude.mapM_ recurseDir content  --   recursion (mapM from Prelude, not Pipe!)
+        else return ()
     return ()
+
 
 ----------------------------------------------support code (not pipes)
 --processFile1 :: FilePath -> IO String
@@ -94,10 +113,10 @@ recurseDir fp = do
 --    return content3
 
 
-test_1 = do
-    putStrLn "----------------------------"
-    startPipe testDir
-    putStrLn "============================"
-    assertBool False  -- to force output
+--test_1 = do
+--    putStrLn "----------------------------"
+--    startPipe testDir
+--    putStrLn "============================"
+--    assertBool False  -- to force output
 
 

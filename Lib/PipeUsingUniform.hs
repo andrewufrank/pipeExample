@@ -43,6 +43,7 @@ import Lib.NoPipeUsingUniform (processOneFile, directoryContent, processOneDirEn
                     , testDir )
 
 import Data.Maybe
+import Control.Exception
 
 startPipe :: FilePath -> FilePath ->  IO ()
 startPipe target store = do
@@ -79,26 +80,33 @@ finalConsumer = do
 --recurseDir :: FilePath -> Pipe FilePath String ErrIO ()
 -- must not have a defined type
 recurseDir fp = do
-    stat <- Pipe.lift $ Uniform.FileStatus.getSymbolicLinkStatusFP (fp :: FilePath)
-    isReadExecutable <- Pipe.lift $ getFileAccess fp (True, False, True)
-    isReadable <- Pipe.lift $ getFileAccess fp (True, False, False)
-    when isReadable $ do
-        putIOwords ["recureseDir is readable", showT fp]
-        if isSymbolicLink stat
-            then  return ()
-            else if isRegularFile stat
-                    then do
-                        res <- Pipe.lift $ processOneFile fp
-                        Pipe.yield res
-                    else if isDirectory stat && isReadExecutable
-                            then do  -- add more tests!
-                                    res1 <- Pipe.lift $ processOneDirEntry fp
-                                    Pipe.yield res1
-                                    content ::[FilePath]  <- Pipe.lift $ directoryContent fp
-    --                              lift $ putStrLn . show $ content
-                                    Prelude.mapM_ recurseDir content
-                            else return ()  --   recursion (mapM from Prelude, not Pipe!)
-    return ()
+    if fp == "/proc" || fp == "/home/frank" then return ()
+      else do
+        stat <- Pipe.lift $ Uniform.FileStatus.getSymbolicLinkStatusFP (fp :: FilePath)
+        isReadExecutable <- Pipe.lift $ getFileAccess fp (True, False, True)
+        isReadable <- Pipe.lift $ getFileAccess fp (True, False, False)
+        when isReadable $ do
+            putIOwords ["recureseDir is readable", showT fp]
+            if isSymbolicLink stat
+                then  return ()
+                else if isRegularFile stat
+                        then do
+                            res <- Pipe.lift $ processOneFile fp
+                            putIOwords ["recureseDir 1 file", showT fp]
+                            Pipe.yield res
+                            putIOwords ["recureseDir  2 file", showT fp]
+                        else if isDirectory stat && isReadExecutable
+                                then do  -- add more tests!
+                                        res1 <- Pipe.lift $ processOneDirEntry fp
+                                        Pipe.yield res1
+                                        content ::[FilePath]  <- Pipe.lift $ directoryContent fp
+        --                              lift $ putStrLn . show $ content
+                                        Prelude.mapM_ recurseDir content
+                                else return ()  --   recursion (mapM from Prelude, not Pipe!)
+        return ()
+--    `catch` \(e::SomeException) -> do
+--            putIOwords ["recurseDir - error catch: ", showT e]
+--            return ()
 
 resFile0 = "result0" :: FilePath
 resFileN = "resultN" :: FilePath
@@ -109,7 +117,7 @@ test_PUU = do
     putStrLn "============================"
     r0 <- readFile resFile0
     rN <- readFile resFileN
-    assertEqual r0 r0
+    assertEqual r0 rN
 
 
 -- there are some special files (all of /proc?) which are read permission

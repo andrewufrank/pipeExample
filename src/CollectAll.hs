@@ -6,16 +6,20 @@
 module Main     where      -- must have Main (main) or Main where
 
 --import Lib.NoPipe
---import Lib.WithPipe
+import Lib.WithPipe
 --import Lib.NoPipeUsingUniform
-import Lib.PipeUsingUniform
+--import Lib.PipeUsingUniform
+
+
 main =  do  -- with tests in other modules
-    putStrLn "\n\n\n\nCollect all files: aa \n"
+    putStrLn "\n\n\n\nCollect all files: bb \n"
 --    processDir "/home/frank"
 --    startPipe "/home/frank/Workspace8/testDirFileIO"
 --    startPipe "/home/frank/Workspace8"
---    startPipe "/home/frank/Workspace8/pipeExample/testDirFileIO"
-    startPipe "/" "alldiskList"
+--    startPipe "/"  -- fails for /proc
+
+
+    startPipe "/" "alldiskList2"
 
 --    recurseDirUU "/"   -- no pipe, uniform
     putStrLn ("----------------------------------------------------- end")

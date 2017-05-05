@@ -74,7 +74,7 @@ processOneFile fn = do
     if isReadable
         then do
                 putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
-                md <- getMD5z fn
+                md <- getMD5 fn
                 let res = unwords ["\nF:", fn, show md]
                 putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
                 return res
