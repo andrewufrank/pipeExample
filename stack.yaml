@@ -15,6 +15,6 @@ packages:
 - location: /home/frank/Workspace8/repo8/uniform/uniform-time
   extra-dep: true
 - location: /home/frank/Workspace8/repo8/uniform/uniform-http
-
-extra-deps: []
+extra-deps:
+- data-easy-0.7.0
 resolver: lts-8.13

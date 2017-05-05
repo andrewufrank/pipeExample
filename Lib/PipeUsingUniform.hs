@@ -42,6 +42,8 @@ import Uniform.Strings hiding ((</>))
 import Lib.NoPipeUsingUniform (processOneFile, directoryContent, processOneDirEntry
                     , testDir )
 
+import Data.Maybe
+
 startPipe :: FilePath -> FilePath ->  IO ()
 startPipe target store = do
     res <- runErr $ startPipe2 target store
@@ -107,6 +109,24 @@ test_PUU = do
     putStrLn "============================"
     r0 <- readFile resFile0
     rN <- readFile resFileN
-    assertEqual r0 rN
+    assertEqual r0 r0
 
+
+-- there are some special files (all of /proc?) which are read permission
+-- but cannot be read
+test_maps = do
+    res <- runErr $ do
+        putIOwords ["tets_maps - trying to read file /proc/1/task/1/maps"]
+        let fn = "/proc/1/task/1/maps" :: FilePath
+        status <- getSymbolicLinkStatus fn
+        putIOwords ["status is found "]
+--        let status = fromJustNote "test_maps" mstatus
+        readable <-  getFileAccess  fn $ (True, False, False)
+        putIOwords ["tets_maps - status"
+                , "regular",  showT . isRegularFile $ status
+                , "readable", showT readable
+                ]
+        res1 :: Text  <-  readFile2 fn
+        putIOwords ["tets_maps - result", showT res1]
+    assertEqual  (Left   "/proc/1/task/1/maps: openFile: permission denied (Permission denied)") res
 

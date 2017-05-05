@@ -25,8 +25,8 @@ library
         , pipes ==4.3.3
         --
         , uniform-strings
-        , uniform-error
-        , uniform-fileio
+        , uniform-error >= 0.0.9
+        , uniform-fileio >=0.0.11
 
     default-language: Haskell2010
     exposed-modules:
@@ -52,6 +52,8 @@ Test-Suite pipeAuto
     main-is:    TestMain.hs
     build-depends: base, HTF
         , pipeExample
+        , uniform-error
+        , uniform-fileio
     default-language: Haskell2010
     hs-source-dirs: src
     other-modules:
