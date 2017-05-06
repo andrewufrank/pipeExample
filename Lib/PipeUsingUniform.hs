@@ -86,15 +86,15 @@ recurseDir fp = do
         isReadExecutable <- Pipe.lift $ getFileAccess fp (True, False, True)
         isReadable <- Pipe.lift $ getFileAccess fp (True, False, False)
         when isReadable $ do
-            putIOwords ["recureseDir is readable", showT fp]
+--            putIOwords ["recureseDir is readable", showT fp]
             if isSymbolicLink stat
                 then  return ()
                 else if isRegularFile stat
                         then do
                             res <- Pipe.lift $ processOneFile fp
-                            putIOwords ["recureseDir 1 file", showT fp]
+--                            putIOwords ["recureseDir 1 file", showT fp]
                             Pipe.yield res
-                            putIOwords ["recureseDir  2 file", showT fp]
+--                            putIOwords ["recureseDir  2 file", showT fp]
                         else if isDirectory stat && isReadExecutable
                                 then do  -- add more tests!
                                         res1 <- Pipe.lift $ processOneDirEntry fp
@@ -137,4 +137,12 @@ test_maps = do
         res1 :: Text  <-  readFile2 fn
         putIOwords ["tets_maps - result", showT res1]
     assertEqual  (Left   "/proc/1/task/1/maps: openFile: permission denied (Permission denied)") res
+
+-- this file is corrupt
+--test_jpg = do
+--    res <- startPipe "/home/frank/additionalSpace/Photos_2016/sizilien2016/DSC04129.JPG" "testjpg"
+--    assertEqual () res
+
+
+
 

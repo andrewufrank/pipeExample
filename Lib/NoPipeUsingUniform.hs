@@ -73,13 +73,13 @@ processOneFile fn = do
     isReadable <- getFileAccess fn (True, False, False)
     if isReadable
         then do
-                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
+--                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
                 md <- getMD5 fn
                 let res = unwords ["\nF:", fn, show md]
-                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
+--                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
                 return res
             `catchError` \e -> do
-                putIOwords ["processOneFile error ", showT fn, "readable", showT isReadable
+--                putIOwords ["processOneFile error ", showT fn, "readable", showT isReadable
                     , "\n", showT e]
                 return ""
         else return ""
@@ -121,5 +121,7 @@ resTestDir6 =
    "\nF: testDirFileIO/sub.d/.hiddensub.d/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\"",
    "\nF: testDirFileIO/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\""]
 
-
-
+--this file is corrupt
+--test_jpgNoPipe = do
+--    res <- runErr$ recurseDir "/home/frank/additionalSpace/Photos_2016/sizilien2016/DSC04129.JPG"
+--    assertEqual (Right []) res

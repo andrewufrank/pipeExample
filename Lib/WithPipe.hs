@@ -92,6 +92,8 @@ recurseDir fp = do
         else return ()
     return ()
 
+-- isFile /home/frank/additionalSpace/Photos_2016/sizilien2016/DSC04129.JPG
+--pipeExample: /home/frank/additionalSpace/Photos_2016/sizilien2016/DSC04129.JPG: hGetBufSome: hardware fault (Input/output error)
 
 ----------------------------------------------support code (not pipes)
 --processFile1 :: FilePath -> IO String
