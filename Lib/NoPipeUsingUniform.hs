@@ -64,7 +64,7 @@ directoryContent  :: FilePath -> ErrIO [String]
 -- ^ find the entries in a directory - no recursion yet
 directoryContent dir = do
     content :: [FilePath]  <- getDirCont dir
-    putIOwords ["directoryContent - ", s2t dir, showT content]
+--    putIOwords ["directoryContent - ", s2t dir, showT content]
     return content
 
 processOneFile :: FilePath -> ErrIO String
@@ -78,10 +78,11 @@ processOneFile fn = do
                 let res = unwords ["\nF:", fn, show md]
 --                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
                 return res
-            `catchError` \e -> do
---                putIOwords ["processOneFile error ", showT fn, "readable", showT isReadable
-                    , "\n", showT e]
-                return ""
+            `catchError` \(e :: Text)  -> do
+                putIOwords ["processOneFile error ", showT fn, "readable", showT isReadable, "\n", showT e]
+--                throwErrorT ["processOneFile - problem with getMD5", showT e]
+                -- could be simply
+                return $ unwords ["\nF:", fn, ""]
         else return ""
 
 getMD5z fn = do
@@ -122,6 +123,7 @@ resTestDir6 =
    "\nF: testDirFileIO/.a4.hidden Just \"a6f26e70990ed9c122288bfea23e2060\""]
 
 --this file is corrupt
---test_jpgNoPipe = do
---    res <- runErr$ recurseDir "/home/frank/additionalSpace/Photos_2016/sizilien2016/DSC04129.JPG"
---    assertEqual (Right []) res
+test_jpgNoPipe = do
+    res <- runErr$ recurseDir "/home/frank/additionalSpace/Photos_2016/sizilien2016/DSC04129.JPG"
+    -- just gives no md5 value
+    assertEqual (Right ["\nF: /home/frank/additionalSpace/Photos_2016/sizilien2016/DSC04129.JPG "]) res

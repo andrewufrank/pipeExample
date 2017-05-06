@@ -111,6 +111,7 @@ recurseDir fp = do
 resFile0 = "result0" :: FilePath
 resFileN = "resultN" :: FilePath
 
+test_PUU :: IO ()
 test_PUU = do
     putStrLn "----------------------------"
     startPipe testDir resFileN
