@@ -6,9 +6,9 @@
 module Main     where      -- must have Main (main) or Main where
 
 --import Lib.NoPipe
-import Lib.WithPipe
+--import Lib.WithPipe
 --import Lib.NoPipeUsingUniform
---import Lib.PipeUsingUniform
+import Lib.PipeUsingUniform
 
 
 main =  do  -- with tests in other modules
@@ -19,8 +19,8 @@ main =  do  -- with tests in other modules
 --    startPipe "/"  -- fails for /proc
 
 
---    startPipe "/" "alldiskList2"
-    startPipe "/home" "alldiskList2"
+    startPipe "/" "alldiskList2"
+--    startPipe "/home" "alldiskList2"
 
 --    recurseDirUU "/"   -- no pipe, uniform
     putStrLn ("----------------------------------------------------- end")

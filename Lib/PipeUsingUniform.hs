@@ -80,29 +80,38 @@ finalConsumer = do
 --recurseDir :: FilePath -> Pipe FilePath String ErrIO ()
 -- must not have a defined type
 recurseDir fp = do
-    if fp == "/proc" || fp == "/home/frank" then return ()
-      else do
+--    if fp == "/proc" || fp == "/home/frank" then return ()
+--      else do
         stat <- Pipe.lift $ Uniform.FileStatus.getSymbolicLinkStatusFP (fp :: FilePath)
-        isReadExecutable <- Pipe.lift $ getFileAccess fp (True, False, True)
-        isReadable <- Pipe.lift $ getFileAccess fp (True, False, False)
-        when isReadable $ do
---            putIOwords ["recureseDir is readable", showT fp]
-            if isSymbolicLink stat
-                then  return ()
-                else if isRegularFile stat
-                        then do
-                            res <- Pipe.lift $ processOneFile fp
---                            putIOwords ["recureseDir 1 file", showT fp]
-                            Pipe.yield res
---                            putIOwords ["recureseDir  2 file", showT fp]
-                        else if isDirectory stat && isReadExecutable
-                                then do  -- add more tests!
-                                        res1 <- Pipe.lift $ processOneDirEntry fp
-                                        Pipe.yield res1
-                                        content ::[FilePath]  <- Pipe.lift $ directoryContent fp
-        --                              lift $ putStrLn . show $ content
-                                        Prelude.mapM_ recurseDir content
-                                else return ()  --   recursion (mapM from Prelude, not Pipe!)
+        if isSymbolicLink stat
+            then  do
+                    putIOwords ["recurseDir - symbolid link dropped", s2t fp]
+                    return ()   -- avoid symbolic links immediately, lead to infinite loops
+                                -- and can be broken
+            else  do
+                isReadExecutable <- Pipe.lift $ getFileAccess fp (True, False, True)
+                isReadable <- Pipe.lift $ getFileAccess fp (True, False, False)
+                if not isReadable then  do
+                        putIOwords ["recurseDir - not readable", s2t fp]
+                        return ()  --   recursion (mapM from Prelude, not Pipe!)
+                   else
+        --            putIOwords ["recureseDir is readable", showT fp]
+                     if isRegularFile stat
+                                then do
+                                    res <- Pipe.lift $ processOneFile fp
+        --                            putIOwords ["recureseDir 1 file", showT fp]
+                                    Pipe.yield res
+        --                            putIOwords ["recureseDir  2 file", showT fp]
+                                else if isDirectory stat && isReadExecutable
+                                        then do  -- add more tests!
+                                                res1 <- Pipe.lift $ processOneDirEntry fp
+                                                Pipe.yield res1
+                                                content ::[FilePath]  <- Pipe.lift $ directoryContent fp
+                --                              lift $ putStrLn . show $ content
+                                                Prelude.mapM_ recurseDir content
+                                        else do
+                                            putIOwords ["recurseDir - not readexe, not regular file", s2t fp]
+                                            return ()  --   recursion (mapM from Prelude, not Pipe!)
         return ()
 --    `catch` \(e::SomeException) -> do
 --            putIOwords ["recurseDir - error catch: ", showT e]
@@ -120,6 +129,18 @@ test_PUU = do
     rN <- readFile resFileN
     assertEqual r0 rN
 
+pFile0 = "presult0" :: FilePath
+pFileN = "presultN" :: FilePath
+testPhotos = "/home/frank/additionalSpace/Photos_2016/" ::FilePath
+
+--test_Photos :: IO ()
+--test_Photos = do
+--    putStrLn "----------------------------"
+--    startPipe testPhotos pFileN
+--    putStrLn "============================"
+--    r0 <- readFile pFile0
+--    rN <- readFile pFileN
+--    assertEqual r0 rN
 
 -- there are some special files (all of /proc?) which are read permission
 -- but cannot be read
@@ -144,6 +165,8 @@ test_maps = do
 --    res <- startPipe "/home/frank/additionalSpace/Photos_2016/sizilien2016/DSC04129.JPG" "testjpg"
 --    assertEqual () res
 
-
+test_1 = do
+    res <- startPipe "/usr/share/lyx" "res_test1"
+    assertEqual () res
 
 
