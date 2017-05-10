@@ -24,7 +24,15 @@ module Lib.NoPipeUsingUniform where
 import           Test.Framework
 
 import Uniform.Error
-import Uniform.FileIO
+--import Uniform.FileIO  -- replaced by:
+import Path
+import qualified Data.ByteString.Lazy  as L
+import           Data.Digest.Pure.MD5  (md5)
+import qualified System.Directory      as S
+import Control.DeepSeq (($!!), force)
+import qualified System.Posix          as P
+
+--
 import Uniform.FileStatus
 import Uniform.Strings hiding ((</>))
 
@@ -91,6 +99,70 @@ getMD5z fn = do
     md <- getMD5 fn
     putIOwords ["b"]
     return md
+
+getMD5 fn = do
+--            putIOwords ["getMD5 in FileStrings.hs", showT fn]
+            status <- getSymbolicLinkStatus fn
+--            let status = fromJustNote "getMD5 xx33" $ mstatus
+            let regular = isRegularFile status
+            readable <- getFileAccess fn (True, False, False)
+--            putIOwords ["getMD5 in FileStrings.hs before if"]
+            if regular && readable then callIO $ do
+    --                    putIOwords ["getMD5 in FileStrings.hs file 1"]
+                        filedata :: L.ByteString <- L.readFile fn  -- fails for some special files eg. /proc
+    --                    putIOwords ["getMD5 in FileStrings.hs file 2"]
+                        let res = showT $ md5  filedata
+    --                    putIOwords ["getMD5 in FileStrings.hs file 3"]
+                        return $!! (Just res)
+--                   `catch` \(e::SomeException) -> do
+--                            putIOwords ["caught with catch in getmd5 ", showT e]
+--                            return Nothing
+
+                else throwErrorT $ ["getMD5 error file not readable" , showT fn]
+
+        `catchError` \e -> do
+            putIOwords ["getMD5 in FileStrings.hs", showT fn, showT e]  -- reached
+            throwErrorT $ ["getMD5 error for" , showT fn]
+
+getDirCont fn  = do
+--        putIOwords ["getDirCont", show f]
+        testDir <- doesDirExist fn
+        readExec <- getFileAccess fn (True, False, True)
+        if testDir && readExec then
+            do
+               r <- callIO . S.listDirectory $ fn
+               let r2 = filter ( \file' -> (file' /= "." && file' /= "..")  ) r
+               let r3 = map (fn </>) r2
+--               putIOwords ["FileStrigs - getDirCont", showT fn, "files: ", unwordsT . map showT $ r]
+               return r3
+          else
+                throwErrorT
+                    ["getDirCont not exist or not readable"
+                    , showT fn, showT testDir, showT readExec]
+
+doesDirExist = callIO . S.doesDirectoryExist
+doesFileExist   = callIO . S.doesFileExist
+
+getFileAccess fp (r,w,e) =
+        do
+--            putIOwords ["getFileAccess", show fp]
+            callIO $
+                (do
+
+                    P.fileAccess (unL fp) r w  e
+              `catchError` \e -> do
+                     putIOwords ["getFileAccess error", showT fp, s2t $ show e]
+                     return False )
+
+getSymbolicLinkStatusFP :: Path   -> ErrIO ( P.FileStatus)
+-- ^ get status if exist (else Nothing)
+--   is the status of the link, does not follow the link
+--
+getSymbolicLinkStatusFP  fp = do
+----    putIOwords ["fileio getSymbolicLinkStatus", fp]
+    st <- callIO $ P.getSymbolicLinkStatus fp
+----    putIOwords ["fileio getSymbolicLinkStatus done", fp]
+    return   st
 
 
 -- TODO fileio
