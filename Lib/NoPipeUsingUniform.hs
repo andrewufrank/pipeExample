@@ -26,6 +26,10 @@ import           Test.Framework
 import Uniform.Error
 --import Uniform.FileIO  -- replaced by:
 import Path
+import Path.IO
+import Control.Monad.Catch
+
+--
 import qualified Data.ByteString.Lazy  as L
 import           Data.Digest.Pure.MD5  (md5)
 import qualified System.Directory      as S
@@ -39,122 +43,141 @@ import Uniform.Strings hiding ((</>))
 import Control.Monad
 import Data.Either
 
-recurseDirUU :: FilePath -> IO (ErrOrVal [String])
-recurseDirUU fp = runErr $ recurseDir fp
+--instance CharChains (Path a d) where toString  = show
+instance CharChains2 (Path a d) String where show'  = show
+instance CharChains2 (Path a d) Text where show'  = s2t . show
 
-recurseDir :: FilePath -> ErrIO [String]
--- main entry point
-recurseDir fp = do
-    putIOwords ["recurseDir", s2t fp]
-    stat <- getFileStatus' fp
-    res1 <- if isRegularFile stat
-        then do
-            r <- processOneFile fp
-            return [r]
-        else do
-            processDir fp
-    return res1
+recurseDirUU :: Path Abs Dir -> IO (ErrOrVal [Text])
+recurseDirUU fp = runErr $ processDir fp
 
-processDir :: FilePath -> ErrIO [String]
+--recurseDir :: Path Abs f -> ErrIO [String]
+---- main entry point
+--recurseDir fp = do
+--    putIOwords ["recurseDir", showT fp]
+--    fx <- doesFileExist fp
+--    dx <- doesDirExist fp
+--    if fx then do
+--                        r <- processOneFile fp
+--                        return [r]
+--        else if dx then  processDir fp
+--                    else do
+--                            putIOwords ["recurse neither file nor dir", showT fp]
+--                            return []
+
+--    stat <- getFileStatus' fp
+--    res1 <- if isRegularFile stat
+--        then do
+--            r <- processOneFile fp
+--            return [r]
+--        else do
+--            processDir fp
+--    return res1
+
+processDir :: Path Abs Dir -> ErrIO [Text]
 -- ^ process one directory
 processDir dir = do
     -- process the dir as an entry
     res1 <- processOneDirEntry dir
-    content3 <- directoryContent dir
-    res3 <- mapM recurseDir content3
-    return (res1 : concat res3)
+    (dirs, files) <- listDir dir
+    res3 <- mapM processDir dirs
+    res4 <- mapM processOneFile files
+    return $ concat [res1,  concat res3,  concat res4]
 
-processOneDirEntry :: FilePath -> ErrIO String
+processOneDirEntry :: Path Abs Dir -> ErrIO [Text]
 processOneDirEntry dir = do
-    let res1 = unwords ["\nD: ", dir]
-    return res1
+    let res1 =  unwords' ["\nD: ", show'  dir]
+    return [res1]
 
-directoryContent  :: FilePath -> ErrIO [String]
--- ^ find the entries in a directory - no recursion yet
-directoryContent dir = do
-    content :: [FilePath]  <- getDirCont dir
---    putIOwords ["directoryContent - ", s2t dir, showT content]
-    return content
+--directoryContent  :: Path Abs Dir -> ErrIO [String]
+---- ^ find the entries in a directory - no recursion yet
+--directoryContent dir = do
+--    content :: [FilePath]  <- getDirCont dir
+----    putIOwords ["directoryContent - ", s2t dir, showT content]
+--    return content
 
-processOneFile :: FilePath -> ErrIO String
+processOneFile :: Path Abs File -> ErrIO [Text]
 -- ^ process one file - print filename as a stub
 processOneFile fn = do
-    isReadable <- getFileAccess fn (True, False, False)
-    if isReadable
+    perm <- getPermissions fn
+    if readable perm
         then do
 --                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
                 md <- getMD5 fn
-                let res = unwords ["\nF:", fn, show md]
+                let res = unwords' ["\nF:", showT fn, showT md]
 --                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
-                return res
+                return [res]
             `catchError` \(e :: Text)  -> do
-                putIOwords ["processOneFile error ", showT fn, "readable", showT isReadable, "\n", showT e]
+                putIOwords ["processOneFile error ", showT fn, "readable", showT perm, "\n", showT e]
 --                throwErrorT ["processOneFile - problem with getMD5", showT e]
                 -- could be simply
-                return $ unwords ["\nF:", fn, ""]
-        else return ""
+                return $ [ unwords' ["\nF:", show' fn, ""]]
+        else return []
 
-getMD5z fn = do
-    putIOwords ["a"]
-    md <- getMD5 fn
-    putIOwords ["b"]
-    return md
+--getMD5z fn = do
+--    putIOwords ["a"]
+--    md <- getMD5 fn
+--    putIOwords ["b"]
+--    return md
 
-getMD5 fn = do
---            putIOwords ["getMD5 in FileStrings.hs", showT fn]
-            status <- getSymbolicLinkStatus fn
---            let status = fromJustNote "getMD5 xx33" $ mstatus
-            let regular = isRegularFile status
-            readable <- getFileAccess fn (True, False, False)
---            putIOwords ["getMD5 in FileStrings.hs before if"]
-            if regular && readable then callIO $ do
-    --                    putIOwords ["getMD5 in FileStrings.hs file 1"]
-                        filedata :: L.ByteString <- L.readFile fn  -- fails for some special files eg. /proc
-    --                    putIOwords ["getMD5 in FileStrings.hs file 2"]
-                        let res = showT $ md5  filedata
-    --                    putIOwords ["getMD5 in FileStrings.hs file 3"]
-                        return $!! (Just res)
---                   `catch` \(e::SomeException) -> do
---                            putIOwords ["caught with catch in getmd5 ", showT e]
---                            return Nothing
+getMD5 :: Path Abs File -> ErrIO (Maybe Text)
+getMD5 fn =
+    callIO $ do
+            filedata :: L.ByteString <- L.readFile (toFilePath fn)  -- fails for some special files eg. /proc
+--                    putIOwords ["getMD5 in FileStrings.hs file 2"]
+            let res = showT $ md5  filedata
+--                    putIOwords ["getMD5 in FileStrings.hs file 3"]
+            return $!! (Just res)
 
-                else throwErrorT $ ["getMD5 error file not readable" , showT fn]
+----            putIOwords ["getMD5 in FileStrings.hs", showT fn]
+--            status <- getSymbolicLinkStatus fn
+----            let status = fromJustNote "getMD5 xx33" $ mstatus
+--            let regular = isRegularFile status
+--            readable <- getFileAccess fn (True, False, False)
+----            putIOwords ["getMD5 in FileStrings.hs before if"]
+--            if regular && readable then callIO $ do
+--    --                    putIOwords ["getMD5 in FileStrings.hs file 1"]
+       `catch` \(e::SomeException) -> do
+                putIOwords ["caught with catch in getmd5 ", showT e]
+                return Nothing
+--
+--                else throwErrorT $ ["getMD5 error file not readable" , showT fn]
 
-        `catchError` \e -> do
-            putIOwords ["getMD5 in FileStrings.hs", showT fn, showT e]  -- reached
-            throwErrorT $ ["getMD5 error for" , showT fn]
+--        `catchError` \e -> do
+--            putIOwords ["getMD5 in FileStrings.hs", showT fn, showT e]  -- reached
+--            throwErrorT $ ["getMD5 error for" , showT fn]
 
-getDirCont fn  = do
---        putIOwords ["getDirCont", show f]
-        testDir <- doesDirExist fn
-        readExec <- getFileAccess fn (True, False, True)
-        if testDir && readExec then
-            do
-               r <- callIO . S.listDirectory $ fn
-               let r2 = filter ( \file' -> (file' /= "." && file' /= "..")  ) r
-               let r3 = map (fn </>) r2
---               putIOwords ["FileStrigs - getDirCont", showT fn, "files: ", unwordsT . map showT $ r]
-               return r3
-          else
-                throwErrorT
-                    ["getDirCont not exist or not readable"
-                    , showT fn, showT testDir, showT readExec]
+--
+--getDirCont fn  = do
+----        putIOwords ["getDirCont", show f]
+--        testDir <- doesDirExist fn
+--        readExec <- getFileAccess fn (True, False, True)
+--        if testDir && readExec then
+--            do
+--               r <- callIO . S.listDirectory $ fn
+--               let r2 = filter ( \file' -> (file' /= "." && file' /= "..")  ) r
+--               let r3 = map (fn </>) r2
+----               putIOwords ["FileStrigs - getDirCont", showT fn, "files: ", unwordsT . map showT $ r]
+--               return r3
+--          else
+--                throwErrorT
+--                    ["getDirCont not exist or not readable"
+--                    , showT fn, showT testDir, showT readExec]
 
-doesDirExist = callIO . S.doesDirectoryExist
-doesFileExist   = callIO . S.doesFileExist
+--doesDirExist = callIO . S.doesDirectoryExist
+--doesFileExist   = callIO . S.doesFileExist
 
-getFileAccess fp (r,w,e) =
-        do
---            putIOwords ["getFileAccess", show fp]
-            callIO $
-                (do
+--getFileAccess fp (r,w,e) =
+--        do
+----            putIOwords ["getFileAccess", show fp]
+--            callIO $
+--                (do
+--
+--                    P.fileAccess (unL fp) r w  e
+--              `catchError` \e -> do
+--                     putIOwords ["getFileAccess error", showT fp, s2t $ show e]
+--                     return False )
 
-                    P.fileAccess (unL fp) r w  e
-              `catchError` \e -> do
-                     putIOwords ["getFileAccess error", showT fp, s2t $ show e]
-                     return False )
-
-getSymbolicLinkStatusFP :: Path   -> ErrIO ( P.FileStatus)
+--getSymbolicLinkStatusFP :: Path   -> ErrIO ( P.FileStatus)
 -- ^ get status if exist (else Nothing)
 --   is the status of the link, does not follow the link
 --
@@ -170,11 +193,11 @@ getSymbolicLinkStatusFP  fp = do
 --getFileStatus' fp = liftIO $ P.getFileStatus   fp
 
 
-testDir = "testDirFileIO" :: FilePath  -- relative path for test, gives relative path in output
-testDirAbs = "/home/frank/Workspace8/pipeExample/testDirFileIO" ::FilePath
+testDir =  parseRelDir "testDirFileIO"  :: Maybe (Path Rel Dir)  -- relative path for test, gives relative path in output
+testDirAbs = parseAbsDir "/home/frank/Workspace8/pipeExample/testDirFileIO" :: Maybe (Path Abs Dir)
 -- TODO error
 test_2 = do
-    res <- runErr $ recurseDir testDir
+    res <-   recurseDirUU (fromJustNote "testdirabs" testDirAbs)
     assertEqual (Right resTestDir6) res
 
 resTestDir6 =
