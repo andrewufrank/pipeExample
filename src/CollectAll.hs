@@ -10,6 +10,7 @@ module Main     where      -- must have Main (main) or Main where
 import Lib.NoPipeUsingUniform
 --import Lib.PipeUsingUniform
 import Path
+import Safe
 
 
 main =  do  -- with tests in other modules
@@ -22,8 +23,8 @@ main =  do  -- with tests in other modules
 
 --    startPipe "/" "alldiskList2"
 --    startPipe "/home" "alldiskList2"
-    targetDir = parseAbsDir "/home'
-    resultFile = parseRelFile "alldiskList2"
+    let     targetDir = fromJustNote "collectall_targetDir" $ parseAbsDir "/home"
+--            resultFile = parseRelFile "alldiskList2"
     recurseDirUU targetDir
 
 --    recurseDirUU "/"   -- no pipe, uniform

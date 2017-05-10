@@ -39,7 +39,7 @@ library
         Lib.MonadTransformer
         Lib.WithPipe
         Lib.NoPipeUsingUniform
-        Lib.PipeUsingUniform
+--        Lib.PipeUsingUniform
 
 
 
@@ -47,7 +47,8 @@ executable pipeExample
     main-is:    CollectAll.hs
     build-depends: base
         , pipeExample
-
+        , safe
+        , path
     default-language: Haskell2010
     hs-source-dirs: src
     other-modules:
@@ -59,6 +60,8 @@ Test-Suite pipeAuto
         , pipeExample
         , uniform-error
         , uniform-fileio
+        , path
+        , path-io
     default-language: Haskell2010
     hs-source-dirs: src
     other-modules:
