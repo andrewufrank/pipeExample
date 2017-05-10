@@ -15,9 +15,9 @@ import {-@ HTF_TESTS @-} Lib.NoPipe
 --import {-@ HTF_TESTS @-} Lib.MonadTransformer
 --import {-@ HTF_TESTS @-} Lib.WithPipe
 import {-@ HTF_TESTS @-} Lib.NoPipeUsingUniform
---import {-@ HTF_TESTS @-} Lib.PipeUsingUniform
-import {-@ HTF_TESTS @-} Uniform.Error
-import {-@ HTF_TESTS @-} Uniform.FileStrings
+import {-@ HTF_TESTS @-} Lib.PipeUsingUniform
+--import {-@ HTF_TESTS @-} Uniform.Error
+--import {-@ HTF_TESTS @-} Uniform.FileStrings
 
 
 
