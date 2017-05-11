@@ -1,32 +1,32 @@
 
 D:  "/home/frank/Workspace8/pipeExample/testDirFileIO/"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/.a4.hidden" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/.a4.hidden" Just "a6f26e70990ed9c122288bfea23e2060"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/a1.txt" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/a1.txt" Just "562fade7e712814aec485852d3f5f6dc"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/a2" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/a2" Just "a19e4fec5422bdf818f3b4ec8903d644"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/a3" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/a3" Just "9d607a663f3e9b0a90c3c8d4426640dc"
 
 D:  "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.a4.hidden" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.a4.hidden" Just "a6f26e70990ed9c122288bfea23e2060"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/a1.txt" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/a1.txt" Just "562fade7e712814aec485852d3f5f6dc"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/a2" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/a2" Just "a19e4fec5422bdf818f3b4ec8903d644"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/a3" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/a3" Just "9d607a663f3e9b0a90c3c8d4426640dc"
 
 D:  "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.hiddensub.d/"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.hiddensub.d/.a4.hidden" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.hiddensub.d/.a4.hidden" Just "a6f26e70990ed9c122288bfea23e2060"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.hiddensub.d/a1.txt" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.hiddensub.d/a1.txt" Just "562fade7e712814aec485852d3f5f6dc"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.hiddensub.d/a2" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.hiddensub.d/a2" Just "a19e4fec5422bdf818f3b4ec8903d644"
 
-F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.hiddensub.d/a3" 
+F: "/home/frank/Workspace8/pipeExample/testDirFileIO/sub.d/.hiddensub.d/a3" Just "9d607a663f3e9b0a90c3c8d4426640dc"
 
 D:  "/home/frank/Workspace8/pipeExample/testDirFileIO/subnew/"

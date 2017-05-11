@@ -202,14 +202,14 @@ hFile0 = mkFilenameAbsFile "/home/frank/hresult0"
 hFileN = mkFilenameAbsFile "/home/frank/hresultN"
 homeDir = mkFilenameAbsDir "/home/frank"
 
-test_home :: IO ()
-test_home = do
-    putStrLn "----------------------------"
-    startPipe homeDir hFileN
-    putStrLn "============================"
-    r0 <- readFile3 hFile0
-    rN <- readFile3 hFileN
-    assertEqual r0 rN
+--test_home :: IO ()
+--test_home = do
+--    putStrLn "----------------------------"
+--    startPipe homeDir hFileN
+--    putStrLn "============================"
+--    r0 <- readFile3 hFile0
+--    rN <- readFile3 hFileN
+--    assertEqual r0 rN
 
 test_symlink :: IO ()
 test_symlink = do
