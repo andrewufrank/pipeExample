@@ -56,13 +56,13 @@ import Control.Exception
 instance CharChains2 (Path a d) String where show'  = show
 instance CharChains2 (Path a d) Text where show'  = s2t . show
 
-startPipe :: Path Abs Dir  -> Path Rel File ->  IO ()
+startPipe :: Path Abs Dir  -> Path r File ->  IO ()
 startPipe target store = do
     res <- runErr $ startPipe2 target store
     putIOwords ["startPipe result", showT res]
     return ()
 
-startPipe2 :: Path Abs Dir  -> Path Rel File ->ErrIO ()
+startPipe2 :: Path Abs Dir  -> Path d File ->ErrIO ()
 -- ^ collect the filenames and md5
 startPipe2 target store = do
     storeHandle <- callIO $ openFile (toFilePath store) WriteMode  -- missing in path
@@ -163,10 +163,11 @@ test_PUU = do
     assertEqual r0 rN
 
 mkFilenameRelFile fn = fromJustNote ("mkFilenameRelFile " ++ fn) $ parseRelFile fn
+mkFilenameAbsFile fn = fromJustNote ("mkFilenameRelFile " ++ fn) $ parseAbsFile fn
 mkFilenameAbsDir fn = fromJustNote ("mkFilenameAbsDir " ++ fn) $ parseAbsDir fn
 
-pFile0 = mkFilenameRelFile "presult0"
-pFileN = mkFilenameRelFile "presultN"
+pFile0 = mkFilenameAbsFile "/home/frank/presult0"
+pFileN = mkFilenameAbsFile "/home/frank/presultN"
 --testPhotos = mkFilenameAbsDir "/home/frank/additionalSpace/Photos_2016/"
 testPhotos = mkFilenameAbsDir "/home/frank/additionalSpace/Photos_2016/sizilien2016"
 readFile3 fn = readFile (toFilePath fn)
@@ -180,8 +181,8 @@ readFile3 fn = readFile (toFilePath fn)
 --    rN <- readFile3 pFileN
 --    assertEqual r0 rN
 
-hFile0 = mkFilenameRelFile "hresult0"
-hFileN = mkFilenameRelFile "hresultN"
+hFile0 = mkFilenameAbsFile "/home/frank/hresult0"
+hFileN = mkFilenameAbsFile "/home/frank/hresultN"
 homeDir = mkFilenameAbsDir "/home/frank"
 
 test_home :: IO ()
