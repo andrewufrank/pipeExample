@@ -15,6 +15,7 @@
     , TypeFamilies
     , ScopedTypeVariables
     , OverloadedStrings
+    , PackageImports
     #-}
 
 
@@ -42,6 +43,8 @@ import System.Directory as D
 import System.FilePath.Posix (dropTrailingPathSeparator)
 --import System.Posix as Posix
 
+import "monads-tf" Control.Monad.Error as CME
+
 --import Uniform.FileIO
 import Uniform.FileStatus
 import Uniform.Strings hiding ((</>))
@@ -53,31 +56,38 @@ import Data.Maybe
 import Data.List (sort)
 import Control.Exception
 
-instance CharChains2 (Path a d) String where show'  = show
-instance CharChains2 (Path a d) Text where show'  = s2t . show
-
 startPipe :: Path Abs Dir  -> Path r File ->  IO ()
 startPipe target store = do
     res <- runErr $ startPipe2 target store
     putIOwords ["startPipe result", showT res]
     return ()
 
-startPipe2 :: Path Abs Dir  -> Path d File ->ErrIO ()
+startPipe2 :: Path Abs Dir  -> Path d File -> ErrIO ()
 -- ^ collect the filenames and md5
 startPipe2 target store = do
     storeHandle <- callIO $ openFile (toFilePath store) WriteMode  -- missing in path
-    callIO $ Pipe.runEffect $  effect target storeHandle
+    Pipe.runEffect $  effect target storeHandle
     callIO $ S.hClose  storeHandle
     return  ()
 
-effect :: Path Abs Dir -> Handle -> Pipe.Effect IO ()  -- useful to fix types
-effect target storeHandle =  Pipe.for (initialProducer target) $ \dir ->
+--effect ::  (ErrorType ((Pipe.Proxy
+--                                         Pipe.X
+--                                         ()
+--                                         ()
+--                                         String
+--                                         (CME.ErrorT
+--                                            Text IO))) ~ Text) =>
+--                Path Abs Dir -> Handle -> Pipe.Effect ErrIO ()  -- useful to fix types
+effect target storeHandle = Pipe.for (initialProducer target)  $ \dir ->
+--                initialProducer
                 recurseDir dir
                 >-> Pipe.toHandle storeHandle
 --                >-> finalConsumer
 --                >-> Pipe.toListM
+--                    $ target
 
-initialProducer :: Path Abs Dir -> Pipe.Producer (Path Abs Dir) IO ()
+--initialProducer :: Path Abs Dir -> Pipe.Producer (Path Abs Dir) ErrIO ()
+--initialProducer :: Path Abs Dir -> Pipe.Proxy (Pipe.X) (Pipe.X) ()  (Path Abs Dir) IO ()
 initialProducer fp = do
     Pipe.yield fp
 
@@ -87,35 +97,26 @@ initialProducer fp = do
 --    Pipe.lift $ callIO $  putStrLn st
 --    finalConsumer
 
---processOneDirEntry :: Path Abs Dir ->  IO Text
---processOneDirEntry dir = do
---    let res1 =  unwords' ["\nD: ", show'  dir]
---    return  res1
 
-----processOneFileP :: Path Abs File -> ErrIO [Text]
----- ^ process one file - print filename as a stub
---processOneFileP fn = do
---    res <- Pipe.lift $ processOneFile fn
---    case res of
---        Nothing -> return ()
---        Just t -> Pipe.yield t
-
-
---processOneFile :: Path Abs File -> Pipe.Pipe (Pipe.X) String ErrIO ()
+--processOneFile ::  -- (ErrorType (Pipe.Proxy x x' y y' ErrIO  ) ~ Text)
+--          Path Abs File -> Pipe.Pipe (Pipe.X) String ErrIO ()
+--processOneFile :: Path Abs File -> Pipe.Proxy (Pipe.X) (Pipe.X) ()  String IO ()
 -- ^ process one file - print filename as a stub
+processOneFile ::Path b File
+                      -> Pipe.Proxy Pipe.X () () String (ErrorT Text IO) ()
 processOneFile fn = do
 --    putIOwords ["processOneFile test ", showT fn]
-    fx <- PIO.doesFileExist fn
+    fx <- Pipe.lift $ callIO $ PIO.doesFileExist fn
     if not fx
         then do
-            putIOwords ["processOneFile not exis ", showT fn]
+            Pipe.lift $ putIOwords ["processOneFile not exis ", showT fn]
             return ()
         else  do
-            perm <-Pipe.lift $ PIO.getPermissions fn
+            perm <-Pipe.lift $ callIO $ PIO.getPermissions fn
             res <- if readable perm
                 then  do
         --                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
-                        md <- Pipe.lift $ getMD5 (toFilePath fn)
+                        md <- Pipe.lift $ callIO $  getMD5 (toFilePath fn)
                         let res = unwords' ["\nF:", showT fn, showT md]
         --                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
                         return (Just res)
@@ -123,34 +124,40 @@ processOneFile fn = do
         --                putIOwords ["processOneFile error ", showT fn, "readable", showT perm, "\n", showT e]
         --                throwErrorT ["processOneFile - problem with getMD5", showT e]
                         -- could be simply
-                        return . Just . unwords' $ ["\nF:", show' fn, ""]
+--                        return . Just . unwords' $ ["\nF:", show' fn, ""]
                 else do
-                    putIOwords ["processOneFile not readable ", showT fn]
+                    Pipe.lift $ putIOwords ["processOneFile not readable ", showT fn]
                     return Nothing
             Pipe.yield (maybe "" t2s res)
             return () -- (show res)
 
 xisSymbolicLink t =  D.pathIsSymbolicLink   (dropTrailingPathSeparator $ toFilePath t)
---recurseDir :: Path Abs Dir  -> Pipe.Pipe (Pipe.X) String ErrIO ()
+
+--recurseDir :: Path Abs Dir  -> Pipe.Pipe (Pipe.X) String IO ()
+--recurseDir ::  (ErrorType  (Pipe.Proxy (Pipe.X) (Pipe.X) ()  String ErrIO) ~ Text) =>
+--    Path Abs Dir  -> Pipe.Proxy (Pipe.X) (Pipe.X) ()  String ErrIO ()
 -- must not have a defined type
+recurseDir :: Path Abs Dir
+                      -> Pipe.Proxy Pipe.X () () String (ErrorT Text IO) ()
 recurseDir fp = do
 --    putIOwords ["recurseDir start", showT fp]
-    perm <-Pipe.lift $ PIO.getPermissions fp
+    perm <-Pipe.lift $ callIO $ PIO.getPermissions fp
     if not (readable perm && searchable perm)
         then do
-            putIOwords ["recurseDir not readable or not searchable", showT fp]
+            Pipe.lift $ putIOwords ["recurseDir not readable or not searchable", showT fp]
+--            throwError ("something" :: Text)
             return ()
         else do
-            symLink <- Pipe.lift $ xisSymbolicLink fp
+            symLink <- Pipe.lift $ callIO $ xisSymbolicLink fp
             if symLink
                 then do
-                        putIOwords ["recurseDir symlink", showT fp]
+                        Pipe.lift $ putIOwords ["recurseDir symlink", showT fp]
                         return ()
                 else do
                     let res1 = unwords' ["\nD: ", show'  fp]
             --         res1 :: Text <- Pipe.lift $ processOneDirEntry fp  -- callIO just to get error
                     Pipe.yield res1
-                    (dirs, files) <- Pipe.lift $ listDir  fp
+                    (dirs, files) <- Pipe.lift $ callIO $ listDir  fp
                     Prelude.mapM_ processOneFile (sort files)
                     Prelude.mapM_ recurseDir (sort dirs)
                     return ()

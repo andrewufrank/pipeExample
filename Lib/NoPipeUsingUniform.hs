@@ -44,8 +44,6 @@ import Control.Monad
 import Data.Either
 import Data.List
 
-instance CharChains2 (Path a d) String where show'  = show
-instance CharChains2 (Path a d) Text where show'  = s2t . show
 
 recurseDirUU :: Path Abs Dir -> IO (ErrOrVal [Text])
 recurseDirUU fp = runErr $ processDir fp
