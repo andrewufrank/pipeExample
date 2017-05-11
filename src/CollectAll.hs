@@ -21,7 +21,7 @@ main =  do  -- with tests in other modules
 --    startPipe "/"  -- fails for /proc
 
 
-    startPipe (mkFilenameAbsDir "/") (mkFilenameRelFile "alldiskList2")
+    startPipe (mkFilenameAbsDir "/") (mkFilenameAbsFile "/home/frank/alldiskList2")
 --    startPipe "/home" "alldiskList2"
 --
 --    let     targetDir = fromJustNote "collectall_targetDir" $ parseAbsDir "/home"

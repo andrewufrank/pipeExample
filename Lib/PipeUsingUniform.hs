@@ -104,33 +104,43 @@ initialProducer fp = do
 --processOneFile :: Path Abs File -> Pipe.Pipe (Pipe.X) String ErrIO ()
 -- ^ process one file - print filename as a stub
 processOneFile fn = do
-    putIOwords ["processOneFile test ", showT fn]
+--    putIOwords ["processOneFile test ", showT fn]
     fx <- PIO.doesFileExist fn
-    when fx $ do
-        perm <-Pipe.lift $ PIO.getPermissions fn
-        res <- if readable perm
-            then  do
-    --                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
-                    md <- Pipe.lift $ getMD5 (toFilePath fn)
-                    let res = unwords' ["\nF:", showT fn, showT md]
-    --                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
-                    return (Just res)
-    --            `catch` \(e :: SomeException)  -> do
-    --                putIOwords ["processOneFile error ", showT fn, "readable", showT perm, "\n", showT e]
-    --                throwErrorT ["processOneFile - problem with getMD5", showT e]
-                    -- could be simply
-                    return . Just . unwords' $ ["\nF:", show' fn, ""]
-            else return Nothing
-        Pipe.yield (maybe "" t2s res)
-        return () -- (show res)
+    if not fx
+        then do
+            putIOwords ["processOneFile not exis ", showT fn]
+            return ()
+        else  do
+            perm <-Pipe.lift $ PIO.getPermissions fn
+            res <- if readable perm
+                then  do
+        --                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
+                        md <- Pipe.lift $ getMD5 (toFilePath fn)
+                        let res = unwords' ["\nF:", showT fn, showT md]
+        --                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
+                        return (Just res)
+        --            `catch` \(e :: SomeException)  -> do
+        --                putIOwords ["processOneFile error ", showT fn, "readable", showT perm, "\n", showT e]
+        --                throwErrorT ["processOneFile - problem with getMD5", showT e]
+                        -- could be simply
+                        return . Just . unwords' $ ["\nF:", show' fn, ""]
+                else do
+                    putIOwords ["processOneFile not readable ", showT fn]
+                    return Nothing
+            Pipe.yield (maybe "" t2s res)
+            return () -- (show res)
 
 xisSymbolicLink t =  D.pathIsSymbolicLink   (dropTrailingPathSeparator $ toFilePath t)
 --recurseDir :: Path Abs Dir  -> Pipe.Pipe (Pipe.X) String ErrIO ()
 -- must not have a defined type
 recurseDir fp = do
-    putIOwords ["recurseDir start", showT fp]  -- not effective
+--    putIOwords ["recurseDir start", showT fp]
     perm <-Pipe.lift $ PIO.getPermissions fp
-    when (readable perm && searchable perm) $ do
+    if not (readable perm && searchable perm)
+        then do
+            putIOwords ["recurseDir not readable or not searchable", showT fp]
+            return ()
+        else do
             symLink <- Pipe.lift $ xisSymbolicLink fp
             if symLink
                 then do
