@@ -39,6 +39,7 @@ import Path         as Path
 import Path.IO  as PIO
 import System.IO as S
 import System.Directory as D
+import System.FilePath.Posix (dropTrailingPathSeparator)
 --import System.Posix as Posix
 
 --import Uniform.FileIO
@@ -103,36 +104,46 @@ initialProducer fp = do
 --processOneFile :: Path Abs File -> Pipe.Pipe (Pipe.X) String ErrIO ()
 -- ^ process one file - print filename as a stub
 processOneFile fn = do
-    perm <-Pipe.lift $ PIO.getPermissions fn
-    res <- if readable perm
-        then  do
---                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
-                md <- Pipe.lift $ getMD5 (toFilePath fn)
-                let res = unwords' ["\nF:", showT fn, showT md]
---                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
-                return (Just res)
---            `catch` \(e :: SomeException)  -> do
---                putIOwords ["processOneFile error ", showT fn, "readable", showT perm, "\n", showT e]
---                throwErrorT ["processOneFile - problem with getMD5", showT e]
-                -- could be simply
-                return . Just . unwords' $ ["\nF:", show' fn, ""]
-        else return Nothing
-    Pipe.yield (maybe "" t2s res)
-    return () -- (show res)
+    putIOwords ["processOneFile test ", showT fn]
+    fx <- PIO.doesFileExist fn
+    when fx $ do
+        perm <-Pipe.lift $ PIO.getPermissions fn
+        res <- if readable perm
+            then  do
+    --                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
+                    md <- Pipe.lift $ getMD5 (toFilePath fn)
+                    let res = unwords' ["\nF:", showT fn, showT md]
+    --                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
+                    return (Just res)
+    --            `catch` \(e :: SomeException)  -> do
+    --                putIOwords ["processOneFile error ", showT fn, "readable", showT perm, "\n", showT e]
+    --                throwErrorT ["processOneFile - problem with getMD5", showT e]
+                    -- could be simply
+                    return . Just . unwords' $ ["\nF:", show' fn, ""]
+            else return Nothing
+        Pipe.yield (maybe "" t2s res)
+        return () -- (show res)
 
-
+xisSymbolicLink t =  D.pathIsSymbolicLink   (dropTrailingPathSeparator $ toFilePath t)
 --recurseDir :: Path Abs Dir  -> Pipe.Pipe (Pipe.X) String ErrIO ()
 -- must not have a defined type
 recurseDir fp = do
-    symLink <- Pipe.lift $ D.pathIsSymbolicLink (toFilePath fp)
-    if symLink then return () else do
-        let res1 = unwords' ["\nD: ", show'  fp]
---        res1 :: Text <- Pipe.lift $ processOneDirEntry fp  -- callIO just to get error
-        Pipe.yield res1
-        (dirs, files) <- Pipe.lift $ listDir  fp
-        Prelude.mapM_ processOneFile (sort files)
-        Prelude.mapM_ recurseDir (sort dirs)
-        return ()
+    putIOwords ["recurseDir start", showT fp]  -- not effective
+    perm <-Pipe.lift $ PIO.getPermissions fp
+    when (readable perm && searchable perm) $ do
+            symLink <- Pipe.lift $ xisSymbolicLink fp
+            if symLink
+                then do
+                        putIOwords ["recurseDir symlink", showT fp]
+                        return ()
+                else do
+                    let res1 = unwords' ["\nD: ", show'  fp]
+            --         res1 :: Text <- Pipe.lift $ processOneDirEntry fp  -- callIO just to get error
+                    Pipe.yield res1
+                    (dirs, files) <- Pipe.lift $ listDir  fp
+                    Prelude.mapM_ processOneFile (sort files)
+                    Prelude.mapM_ recurseDir (sort dirs)
+                    return ()
 
 --        return ()
 ----    `catch` \(e::SomeException) -> do
@@ -153,20 +164,48 @@ test_PUU = do
 
 mkFilenameRelFile fn = fromJustNote ("mkFilenameRelFile " ++ fn) $ parseRelFile fn
 mkFilenameAbsDir fn = fromJustNote ("mkFilenameAbsDir " ++ fn) $ parseAbsDir fn
+
 pFile0 = mkFilenameRelFile "presult0"
 pFileN = mkFilenameRelFile "presultN"
 --testPhotos = mkFilenameAbsDir "/home/frank/additionalSpace/Photos_2016/"
 testPhotos = mkFilenameAbsDir "/home/frank/additionalSpace/Photos_2016/sizilien2016"
 readFile3 fn = readFile (toFilePath fn)
 
-test_Photos :: IO ()
-test_Photos = do
+--test_Photos :: IO ()
+--test_Photos = do
+--    putStrLn "----------------------------"
+--    startPipe testPhotos pFileN
+--    putStrLn "============================"
+--    r0 <- readFile3 pFile0
+--    rN <- readFile3 pFileN
+--    assertEqual r0 rN
+
+hFile0 = mkFilenameRelFile "hresult0"
+hFileN = mkFilenameRelFile "hresultN"
+homeDir = mkFilenameAbsDir "/home/frank"
+
+test_home :: IO ()
+test_home = do
     putStrLn "----------------------------"
-    startPipe testPhotos pFileN
+    startPipe homeDir hFileN
     putStrLn "============================"
-    r0 <- readFile3 pFile0
-    rN <- readFile3 pFileN
+    r0 <- readFile3 hFile0
+    rN <- readFile3 hFileN
     assertEqual r0 rN
+
+test_symlink :: IO ()
+test_symlink = do
+    let t =   mkFilenameAbsDir "/bin/X11/X11"
+    isSymlink1 <- D.pathIsSymbolicLink   (dropTrailingPathSeparator $ toFilePath t)
+    isSymlink2 <- D.pathIsSymbolicLink "/bin/X11/X11" -- (toFilePath t)
+    isSymlink3 <- D.pathIsSymbolicLink "/bin/X11/X11/" -- (toFilePath t)
+    assertEqual  (True, True, False) (isSymlink1, isSymlink2, isSymlink3)
+
+--test_toFP :: IO ()
+--test_toFP = do
+--    let t =   mkFilenameAbsDir "/bin/X11/X11"
+--    let t2 = toFilePath t
+--    assertEqual "/bin/X11/X11" t2
 
 ---- there are some special files (all of /proc?) which are read permission
 ---- but cannot be read

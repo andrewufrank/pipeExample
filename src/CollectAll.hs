@@ -28,7 +28,6 @@ main =  do  -- with tests in other modules
 ----            resultFile = parseRelFile "alldiskList2"
 --    recurseDirUU targetDir
 
---    recurseDirUU "/"   -- no pipe, uniform
+--    recurseDirUU "/"   -- no pipe,   uniform
     putStrLn ("----------------------------------------------------- end")
     return ()
-
