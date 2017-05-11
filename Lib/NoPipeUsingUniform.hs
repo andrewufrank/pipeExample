@@ -53,15 +53,23 @@ recurseDirUU fp = runErr $ processDir fp
 processDir :: Path Abs Dir -> ErrIO [Text]
 -- ^ process one directory
 processDir dir = do
+    if (("/proc"::String) `isPrefixOf'` (toFilePath dir))
+     then return []
+     else do
         -- process the dir as an entry
-        res1 <- processOneDirEntry dir  -- callIO just to get error
-        (dirs, files) <- listDir  dir
-        res3 <- mapM processDir (sort dirs)
-        res4 <- mapM processOneFile (sort files)
-        return $ concat [res1,  concat res3,  concat res4]
---   `catch` \(e::SomeException) -> do
---            putIOwords ["caught with catch in procesDir ", showT e]
---            return []
+        perms <- getPermissions dir
+        if searchable perms
+            then  do
+                    res1 <- processOneDirEntry dir  -- callIO just to get error
+                    (dirs, files) <- listDir  dir
+                    res3 <- mapM processDir (sort dirs)
+                    res4 <- mapM processOneFile (sort files)
+                    return $ concat [res1,  concat res3,  concat res4]
+               `catch` \(e::SomeException) -> do
+                        unless (("/proc"::String) `isPrefixOf'` (toFilePath dir)) $
+                           putIOwords ["caught with catch in procesDir ", showT e]
+                        return []
+            else return []
 
 processOneDirEntry :: Path Abs Dir -> ErrIO [Text]
 processOneDirEntry dir = do
@@ -144,6 +152,6 @@ test_jpgNoPipe = do
 test_proc = do
     procFile <- parseAbsDir "/proc"
     res <-   recurseDirUU procFile -- (fromJustNote "testdirabs" testDirAbs)
-    assertEqual (Right resTestDir6) res
+    assertEqual (Right []) res
 
 

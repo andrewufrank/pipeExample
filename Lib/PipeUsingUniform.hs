@@ -151,18 +151,22 @@ test_PUU = do
     rN <- readFile (toFilePath resFileN)
     assertEqual r0 rN
 
---pFile0 = "presult0" :: FilePath
---pFileN = "presultN" :: FilePath
---testPhotos = "/home/frank/additionalSpace/Photos_2016/" ::FilePath
+mkFilenameRelFile fn = fromJustNote ("mkFilenameRelFile " ++ fn) $ parseRelFile fn
+mkFilenameAbsDir fn = fromJustNote ("mkFilenameAbsDir " ++ fn) $ parseAbsDir fn
+pFile0 = mkFilenameRelFile "presult0"
+pFileN = mkFilenameRelFile "presultN"
+--testPhotos = mkFilenameAbsDir "/home/frank/additionalSpace/Photos_2016/"
+testPhotos = mkFilenameAbsDir "/home/frank/additionalSpace/Photos_2016/sizilien2016"
+readFile3 fn = readFile (toFilePath fn)
 
---test_Photos :: IO ()
---test_Photos = do
---    putStrLn "----------------------------"
---    startPipe testPhotos pFileN
---    putStrLn "============================"
---    r0 <- readFile pFile0
---    rN <- readFile pFileN
---    assertEqual r0 rN
+test_Photos :: IO ()
+test_Photos = do
+    putStrLn "----------------------------"
+    startPipe testPhotos pFileN
+    putStrLn "============================"
+    r0 <- readFile3 pFile0
+    rN <- readFile3 pFileN
+    assertEqual r0 rN
 
 ---- there are some special files (all of /proc?) which are read permission
 ---- but cannot be read
