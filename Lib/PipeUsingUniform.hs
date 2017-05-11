@@ -35,22 +35,24 @@ import Pipes ((>->), (~>))
 --import Lib.NoPipe (processOneDirEntry, directoryContent, processOneFile
 --                        , testDir, resTestDir6)
 
-import Uniform.Error
-import Path         as Path
-import Path.IO  as PIO
-import System.IO as S
-import System.Directory as D
-import System.FilePath.Posix (dropTrailingPathSeparator)
+--import Uniform.Error
+--import qualified Path         as Path
+--import Path.IO  as PIO
+--import System.IO as S
+--import System.Directory as D
+--import System.FilePath.Posix (dropTrailingPathSeparator)
 --import System.Posix as Posix
 
-import "monads-tf" Control.Monad.Error as CME
+--import "monads-tf" Control.Monad.Error as CME
 
---import Uniform.FileIO
+import Uniform.FileIOalgebra
+import Uniform.FileStrings
 import Uniform.FileStatus
+import Uniform.Error
 import Uniform.Strings hiding ((</>))
 
 --import Lib.NoPipeUsingUniform (getMD5, testDir )
-import Lib.NoPipe  (getMD5)
+--import Lib.NoPipe  (getMD5)
 
 import Data.Maybe
 import Data.List (sort)
@@ -65,9 +67,9 @@ startPipe target store = do
 startPipe2 :: Path Abs Dir  -> Path d File -> ErrIO ()
 -- ^ collect the filenames and md5
 startPipe2 target store = do
-    storeHandle <- callIO $ openFile (toFilePath store) WriteMode  -- missing in path
+    storeHandle <-  openFile2handle store WriteMode  -- missing in path
     Pipe.runEffect $  effect target storeHandle
-    callIO $ S.hClose  storeHandle
+    closeFile2 storeHandle
     return  ()
 
 --effect ::  (ErrorType ((Pipe.Proxy
@@ -106,17 +108,17 @@ processOneFile ::Path b File
                       -> Pipe.Proxy Pipe.X () () String (ErrorT Text IO) ()
 processOneFile fn = do
 --    putIOwords ["processOneFile test ", showT fn]
-    fx <- Pipe.lift $ callIO $ PIO.doesFileExist fn
+    fx <- Pipe.lift $  doesFileExist' fn
     if not fx
         then do
             Pipe.lift $ putIOwords ["processOneFile not exis ", showT fn]
             return ()
         else  do
-            perm <-Pipe.lift $ callIO $ PIO.getPermissions fn
+            perm <-Pipe.lift $ getPermissions' fn
             res <- if readable perm
                 then  do
         --                putIOwords ["processOneFile test ", showT fn, "readable", showT isReadable]
-                        md <- Pipe.lift $ callIO $  getMD5 (toFilePath fn)
+                        md <- Pipe.lift $   getMD5 (toFilePath fn)
                         let res = unwords' ["\nF:", showT fn, showT md]
         --                putIOwords ["processOneFile done ", showT fn, "readable", showT isReadable]
                         return (Just res)
@@ -131,7 +133,7 @@ processOneFile fn = do
             Pipe.yield (maybe "" t2s res)
             return () -- (show res)
 
-xisSymbolicLink t =  D.pathIsSymbolicLink   (dropTrailingPathSeparator $ toFilePath t)
+--xisSymbolicLink t =  D.pathIsSymbolicLink   (dropTrailingPathSeparator $ toFilePath t)
 
 --recurseDir :: Path Abs Dir  -> Pipe.Pipe (Pipe.X) String IO ()
 --recurseDir ::  (ErrorType  (Pipe.Proxy (Pipe.X) (Pipe.X) ()  String ErrIO) ~ Text) =>
@@ -141,14 +143,14 @@ recurseDir :: Path Abs Dir
                       -> Pipe.Proxy Pipe.X () () String (ErrorT Text IO) ()
 recurseDir fp = do
 --    putIOwords ["recurseDir start", showT fp]
-    perm <-Pipe.lift $ callIO $ PIO.getPermissions fp
+    perm <-Pipe.lift $ getPermissions' fp
     if not (readable perm && searchable perm)
         then do
             Pipe.lift $ putIOwords ["recurseDir not readable or not searchable", showT fp]
 --            throwError ("something" :: Text)
             return ()
         else do
-            symLink <- Pipe.lift $ callIO $ xisSymbolicLink fp
+            symLink <- Pipe.lift $ checkSymbolicLink fp -- callIO $ xisSymbolicLink fp
             if symLink
                 then do
                         Pipe.lift $ putIOwords ["recurseDir symlink", showT fp]
@@ -157,7 +159,7 @@ recurseDir fp = do
                     let res1 = unwords' ["\nD: ", show'  fp]
             --         res1 :: Text <- Pipe.lift $ processOneDirEntry fp  -- callIO just to get error
                     Pipe.yield res1
-                    (dirs, files) <- Pipe.lift $ callIO $ listDir  fp
+                    (dirs, files) <- Pipe.lift   $ listDir  fp
                     Prelude.mapM_ processOneFile (sort files)
                     Prelude.mapM_ recurseDir (sort dirs)
                     return ()
@@ -179,14 +181,14 @@ test_PUU = do
     rN <- readFile (toFilePath resFileN)
     assertEqual r0 rN
 
-mkFilenameRelFile fn = fromJustNote ("mkFilenameRelFile " ++ fn) $ parseRelFile fn
-mkFilenameAbsFile fn = fromJustNote ("mkFilenameRelFile " ++ fn) $ parseAbsFile fn
-mkFilenameAbsDir fn = fromJustNote ("mkFilenameAbsDir " ++ fn) $ parseAbsDir fn
+--mkFilenameRelFile fn = fromJustNote ("mkFilenameRelFile " ++ fn) $ parseRelFile fn
+--makeAbsFile fn = fromJustNote ("mkFilenameRelFile " ++ fn) $ parseAbsFile fn
+--mkFilenameAbsDir fn = fromJustNote ("mkFilenameAbsDir " ++ fn) $ parseAbsDir fn
 
-pFile0 = mkFilenameAbsFile "/home/frank/presult0"
-pFileN = mkFilenameAbsFile "/home/frank/presultN"
+pFile0 = makeAbsFile "/home/frank/presult0"
+pFileN = makeAbsFile "/home/frank/presultN"
 --testPhotos = mkFilenameAbsDir "/home/frank/additionalSpace/Photos_2016/"
-testPhotos = mkFilenameAbsDir "/home/frank/additionalSpace/Photos_2016/sizilien2016"
+testPhotos = makeAbsDir "/home/frank/additionalSpace/Photos_2016/sizilien2016"
 readFile3 fn = readFile (toFilePath fn)
 
 --test_Photos :: IO ()
@@ -198,9 +200,9 @@ readFile3 fn = readFile (toFilePath fn)
 --    rN <- readFile3 pFileN
 --    assertEqual r0 rN
 
-hFile0 = mkFilenameAbsFile "/home/frank/hresult0"
-hFileN = mkFilenameAbsFile "/home/frank/hresultN"
-homeDir = mkFilenameAbsDir "/home/frank"
+hFile0 = makeAbsFile "/home/frank/hresult0"
+hFileN = makeAbsFile "/home/frank/hresultN"
+homeDir = makeAbsDir "/home/frank"
 
 --test_home :: IO ()
 --test_home = do
@@ -211,13 +213,6 @@ homeDir = mkFilenameAbsDir "/home/frank"
 --    rN <- readFile3 hFileN
 --    assertEqual r0 rN
 
-test_symlink :: IO ()
-test_symlink = do
-    let t =   mkFilenameAbsDir "/bin/X11/X11"
-    isSymlink1 <- D.pathIsSymbolicLink   (dropTrailingPathSeparator $ toFilePath t)
-    isSymlink2 <- D.pathIsSymbolicLink "/bin/X11/X11" -- (toFilePath t)
-    isSymlink3 <- D.pathIsSymbolicLink "/bin/X11/X11/" -- (toFilePath t)
-    assertEqual  (True, True, False) (isSymlink1, isSymlink2, isSymlink3)
 
 --test_toFP :: IO ()
 --test_toFP = do

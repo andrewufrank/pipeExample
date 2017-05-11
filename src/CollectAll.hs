@@ -9,8 +9,9 @@ module Main     where      -- must have Main (main) or Main where
 --import Lib.WithPipe
 import Lib.NoPipeUsingUniform
 import Lib.PipeUsingUniform
-import Path
-import Safe
+--import Path
+--import Safe
+import Uniform.Filenames
 
 
 main =  do  -- with tests in other modules
@@ -21,7 +22,7 @@ main =  do  -- with tests in other modules
 --    startPipe "/"  -- fails for /proc
 
 
-    startPipe (mkFilenameAbsDir "/") (mkFilenameAbsFile "/home/frank/alldiskList2")
+    startPipe (makeAbsDir "/") (makeAbsFile "/home/frank/alldiskList2")
 --    startPipe "/home" "alldiskList2"
 --
 --    let     targetDir = fromJustNote "collectall_targetDir" $ parseAbsDir "/home"
